@@ -1,0 +1,22 @@
+name: testes
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ambiente de teste
+        run: |
+          sed -e 's/^DJANGO_DEBUG=.*/DJANGO_DEBUG=true/' \
+              -e 's/^ACESSO_MODO=.*/ACESSO_MODO=rede/' \
+              -e 's/^PREFIXO_URL=.*/PREFIXO_URL=/' \
+              -e "s/^DJANGO_SECRET_KEY=.*/DJANGO_SECRET_KEY=ci-$(openssl rand -hex 24)/" .env.example > .env
+      - name: Sobe banco e Redis
+        run: docker compose up -d --build db redis
+      - name: pytest
+        run: docker compose run --rm -e LOG_DIR=/tmp/logs-teste web pytest

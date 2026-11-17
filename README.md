@@ -1,5 +1,7 @@
 # Conciliação de cartão corporativo
 
+[![testes](https://github.com/gustavo-koerich/conciliacao-cartao/actions/workflows/testes.yml/badge.svg)](https://github.com/gustavo-koerich/conciliacao-cartao/actions/workflows/testes.yml)
+
 Sistema web que confere, lançamento a lançamento, a **fatura do cartão corporativo** contra o que cada representante comercial declarou nos **formulários de despesa**, e cuida das pendências até o fechamento. Substituiu uma conferência manual em planilhas que levava dias por mês.
 
 > Repositório de portfólio. Empresa, pessoas, cartões e valores da demonstração são **fictícios**.
