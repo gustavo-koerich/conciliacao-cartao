@@ -1,0 +1,10 @@
+<section class="cartao" id="suporte">
+  <h2 class="subtitulo">Relatório para o suporte</h2>
+  <p class="secundario">Copie e mande para o suporte (Gustavo), ou baixe o arquivo. Não contém dados de formulário nem de paciente.</p>
+  <textarea class="mono pequeno relatorio" id="relatorio-{{ imp.pk }}" readonly rows="10">{{ relatorio }}</textarea>
+  <div class="acoes">
+    <button class="btn secundario" type="button"
+            onclick="navigator.clipboard.writeText(document.getElementById('relatorio-{{ imp.pk }}').value).then(() => { this.textContent = 'Copiado' })">Copiar</button>
+    <a class="btn secundario" href="{% url 'conciliacao:fatura_suporte' imp.pk %}">Baixar .txt</a>
+  </div>
+</section>

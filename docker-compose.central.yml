@@ -1,0 +1,11 @@
+# Uso em produção (servidor da Central): liga o web à rede Docker "automacoes" da Central,
+# para validar a sessão em http://central:8080/api/auth/verificar.
+#   docker compose -f docker-compose.yml -f docker-compose.central.yml up -d
+services:
+  web:
+    networks: [interna, automacoes]
+
+networks:
+  automacoes:
+    external: true
+    name: automacoes

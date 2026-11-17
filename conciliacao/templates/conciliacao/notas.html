@@ -1,0 +1,123 @@
+{% extends "conciliacao/base.html" %}
+{% load conciliacao_extras %}
+{% block titulo %}Notas fiscais {{ comp }}{% endblock %}
+{% block conteudo %}
+<section class="cartao">
+  <div class="linha-titulo">
+    <h1 class="titulo">Notas fiscais · {{ comp }}</h1>
+    {% url 'conciliacao:notas' 'CODIGO' as destino %}{% include "conciliacao/_seletor.html" with destino=destino %}
+  </div>
+  <p class="secundario">Para os cartões de compras da empresa (conferidos por nota fiscal). Envie as notas soltas, uma pasta inteira ou um .zip:
+    XML de preferência; PDF quando não houver XML. O valor manda: cada lançamento recebe a nota de mesmo valor
+    (compra parcelada: valor da parcela × número de parcelas, e a mesma nota vale para as parcelas dos meses seguintes).
+    Com o número da NF do controle de compras ou o nome do emitente batendo, fica <strong>conciliado</strong>;
+    só pelo valor, <strong>conciliado com ressalva</strong> (confira e, se estiver errado, desfaça). O que não casar fica abaixo para associar à mão.</p>
+  {% if not fechada %}
+  <form method="post" action="{% url 'conciliacao:notas_enviar' comp.codigo %}" enctype="multipart/form-data" class="envio">
+    {% csrf_token %}
+    <label for="notas-arquivos" class="soltar"><span>Notas (XML, PDF ou .zip) — pode escolher várias</span>
+      <input type="file" id="notas-arquivos" name="arquivos" accept=".xml,.pdf,.zip" multiple></label>
+    <label for="notas-pasta" class="soltar"><span>Ou uma pasta inteira</span>
+      <input type="file" id="notas-pasta" name="arquivos" webkitdirectory directory multiple></label>
+    <button class="btn" type="submit">Enviar notas</button>
+  </form>
+  <form method="post" action="{% url 'conciliacao:notas_casar' comp.codigo %}" style="margin-top:8px">
+    {% csrf_token %}<button class="btn secundario" type="submit">Casar de novo com a fatura</button>
+  </form>
+  {% endif %}
+</section>
+
+<section class="cartao">
+  <h2 class="subtitulo">Controle de compras</h2>
+  <p class="secundario">Planilha "CONTROLE DE COMPRAS CARTÃO" (aba COMPRAS). Cada lançamento é procurado pelo valor: com a data (até 3 dias) e as parcelas batendo, fica conciliado;
+    só pelo valor (data ou parcelas diferentes), conciliado com ressalva. Com o número da NF, a nota é casada por ele; compra registrada sem NF fica <strong>conciliada com ressalva</strong>. A coluna PAGAMENTO é ignorada: vale o cartão da fatura.</p>
+  <p class="secundario pequeno">{% if controle %}Em uso: {{ controle.arquivo_nome_original }} — {{ controle.resumo.linhas }} compra(s), enviada em {{ controle.criado_em|date:"d/m/Y H:i" }}{% if controle.usuario %} por {{ controle.usuario }}{% endif %}.{% else %}Nenhuma planilha de controle enviada.{% endif %}</p>
+  {% if not fechada %}
+  <form method="post" action="{% url 'conciliacao:notas_controle' comp.codigo %}" enctype="multipart/form-data" class="envio">
+    {% csrf_token %}
+    <label for="controle" class="soltar"><span>Planilha de controle (.xlsx)</span>
+      <input type="file" id="controle" name="controle" accept=".xlsx" required></label>
+    <button class="btn" type="submit">Enviar controle</button>
+  </form>
+  {% endif %}
+</section>
+
+<section class="cartao">
+  <h2 class="subtitulo">Sem nota e fora do controle de compras ({{ pendentes|length }})</h2>
+  <p class="secundario pequeno">Nenhuma nota nem linha do controle com este valor. Envie a nota ou registre a compra no controle.</p>
+  <div class="tabela"><table>
+    <thead><tr><th>Data da compra</th><th>Cartão</th><th>Na fatura</th><th>Parcela</th><th class="num">Valor</th><th class="num">Valor da nota esperado</th><th>Observação</th></tr></thead>
+    <tbody>
+    {% for r in pendentes %}
+      <tr class="linha-vermelha-suave"><td>{{ r.fatura_lanc.data|date:"d/m/Y" }}</td><td class="mono">{{ r.fatura_lanc.cartao.final }}</td>
+        <td>{{ r.fatura_lanc.descricao }}</td>
+        <td>{% if r.fatura_lanc.parcela_total %}{{ r.fatura_lanc.parcela_atual }}/{{ r.fatura_lanc.parcela_total }}{% endif %}</td>
+        <td class="num">{{ r.fatura_lanc.valor|moeda }}</td>
+        <td class="num secundario">{% if r.fatura_lanc.parcela_total %}≈ {{ r.fatura_lanc.valor|vezes:r.fatura_lanc.parcela_total|moeda }}{% else %}{{ r.fatura_lanc.valor|moeda }}{% endif %}</td>
+        <td class="secundario pequeno">{{ r.motivo }}</td></tr>
+    {% empty %}
+      <tr><td colspan="7" class="secundario">Todos os lançamentos de notas fiscais desta fatura têm nota.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+
+<section class="cartao">
+  <details>
+    <summary><strong>Outras notas sem lançamento ({{ total_outras }})</strong> <span class="secundario">— sem valor e data que batam com esta fatura; provavelmente pagas por boleto, PIX ou outro cartão. Associe à mão se for o caso.</span></summary>
+    <div class="tabela" style="margin-top:10px"><table>
+      <thead><tr><th>Arquivo</th><th>Emitente</th><th>Número</th><th>Emissão</th><th class="num">Valor</th><th>Leitura</th><th>Associar ao lançamento</th></tr></thead>
+      <tbody>
+      {% for n in outras %}
+        <tr>
+          <td>{{ n.nome_original|truncatechars:40 }}</td><td>{{ n.nome_emitente|default:"—" }}</td><td>{{ n.numero|default:"—" }}</td>
+          <td>{{ n.data_emissao|date:"d/m/Y"|default:"—" }}</td><td class="num">{{ n.valor_total|moeda }}</td>
+          <td>{% if n.lida %}<span class="pill st-ok">{{ n.get_formato_display }}</span>{% else %}<span class="pill st-ressalva" title="{{ n.erro }}">não lida</span>{% endif %}</td>
+          <td>{% if associaveis and not fechada %}
+            <form method="post" action="{% url 'conciliacao:notas_associar' comp.codigo n.pk %}" class="linha-form">
+              {% csrf_token %}
+              <select name="resultado" aria-label="Lançamento" required>
+                <option value="">— escolha —</option>
+                {% for r in associaveis %}<option value="{{ r.pk }}">{{ r.fatura_lanc.data|date:"d/m" }} · {{ r.fatura_lanc.descricao|truncatechars:28 }} · {{ r.fatura_lanc.valor|moeda }}</option>{% endfor %}
+              </select>
+              <button class="btn secundario pequeno-btn" type="submit">Associar</button>
+            </form>{% else %}—{% endif %}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="7" class="secundario">Nenhuma.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+  </details>
+</section>
+
+<section class="cartao">
+  <h2 class="subtitulo">Conciliados com nota ({{ casadas|length }})</h2>
+  <div class="tabela"><table>
+    <thead><tr><th>Data</th><th>Cartão</th><th>Na fatura</th><th class="num">Valor</th><th>Motivo</th><th>Nota</th></tr></thead>
+    <tbody>
+    {% for r in casadas %}
+      <tr class="{% if r.status == 'CONCILIADO' %}linha-verde-suave{% else %}linha-amarela-suave{% endif %}"><td>{{ r.fatura_lanc.data|date:"d/m/Y" }}</td><td class="mono">{{ r.cartao.final }}</td><td>{{ r.fatura_lanc.descricao }}</td>
+        <td class="num">{{ r.fatura_lanc.valor|moeda }}</td><td class="secundario">{{ r.motivo }}</td>
+        <td>{% if r.anexo_nota %}<a href="{% url 'conciliacao:ver_anexo' r.anexo_nota.pk %}" target="_blank" rel="noopener">{{ r.anexo_nota.nome_original|truncatechars:30 }}</a>
+          {% if not fechada %}<form method="post" action="{% url 'conciliacao:remover_anexo' r.anexo_nota.pk %}" class="inline">{% csrf_token %}<input type="hidden" name="voltar" value="{{ voltar }}"><button class="btn secundario pequeno-btn" type="submit" title="A nota volta para a lista e não é casada de novo com este lançamento">Desfazer</button></form>{% endif %}
+        {% else %}—{% endif %}</td></tr>
+    {% empty %}<tr><td colspan="6" class="secundario">Nenhum ainda.</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+</section>
+
+<section class="cartao">
+  <h2 class="subtitulo">Conciliados sem nota ({{ sem_nota|length }})</h2>
+  <p class="secundario pequeno">O valor bate com o controle de compras, mas a nota não está no sistema. Quando a nota chegar, envie acima: ela é casada sozinha (ou associe à mão em "Outras notas").</p>
+  <div class="tabela"><table>
+    <thead><tr><th>Data</th><th>Cartão</th><th>Na fatura</th><th class="num">Valor</th><th>Motivo</th></tr></thead>
+    <tbody>
+    {% for r in sem_nota %}
+      <tr class="linha-amarela-suave"><td>{{ r.fatura_lanc.data|date:"d/m/Y" }}</td><td class="mono">{{ r.cartao.final }}</td><td>{{ r.fatura_lanc.descricao }}</td>
+        <td class="num">{{ r.fatura_lanc.valor|moeda }}</td><td class="secundario">{{ r.motivo }}</td></tr>
+    {% empty %}<tr><td colspan="5" class="secundario">Nenhum.</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+</section>
+{% endblock %}

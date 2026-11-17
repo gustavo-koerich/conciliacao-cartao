@@ -1,0 +1,106 @@
+# Stack da conciliação. O banco e o Redis ficam só na rede interna; o web publica em 127.0.0.1
+# e o acesso externo passa pelo Tailscale Serve (mesmo endereço da Central, caminho /conciliacao).
+# Em produção, use também docker-compose.central.yml para falar com a Central pela rede "automacoes".
+
+x-app: &app
+  build:
+    context: .
+    args:
+      APP_VERSAO: ${APP_VERSAO:-dev}
+  image: conciliacao-cartao:local
+  env_file: .env
+  restart: unless-stopped
+  volumes:
+    - arquivos:/dados/arquivos
+    - logs:/dados/logs
+    - ${SEGREDOS_DIR:-./segredos}:/run/segredos:ro
+  depends_on:
+    db: {condition: service_healthy}
+    redis: {condition: service_healthy}
+  networks: [interna]
+
+services:
+  db:
+    image: postgres:16.15-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-conciliacao}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:?defina POSTGRES_SUPERUSER_PASSWORD no .env}
+      DB_APP_USER: ${DB_APP_USER:-conc_app}
+      DB_APP_PASSWORD: ${DB_APP_PASSWORD:?defina DB_APP_PASSWORD no .env}
+      DB_BI_USER: ${DB_BI_USER:-conc_bi}
+      DB_BI_PASSWORD: ${DB_BI_PASSWORD:?defina DB_BI_PASSWORD no .env}
+      TZ: ${TZ:-America/Sao_Paulo}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d $${POSTGRES_DB}"]
+      interval: 5s
+      retries: 12
+    networks: [interna]
+    # Sem "ports": o banco não fica exposto fora da rede do Docker.
+
+  redis:
+    image: redis:7.4.11-bookworm
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 12
+    networks: [interna]
+
+  web:
+    <<: *app
+    command: ["sh", "-c", "python manage.py migrate --noinput && exec gunicorn config.wsgi:application --bind 0.0.0.0:8000 --bind 0.0.0.0:8001 --bind 0.0.0.0:8002 --workers 3 --timeout 120 --access-logfile - --logger-class config.gunicorn_log.LogSemCodigo"]
+    ports:
+      - "127.0.0.1:${WEB_PORT:-8091}:8000"
+      - "127.0.0.1:${EXTERNO_PORT:-8092}:8001"  # link da internet (Tailscale Funnel, /conciliacao): login da Central
+      - "127.0.0.1:${PORTAL_PORT:-8093}:8002"   # portal de pendências (Tailscale Funnel, /pendencias/)
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)"]
+      interval: 30s
+      retries: 3
+
+  worker:
+    <<: *app
+    # --worker-ttl 75: espera tarefa por 60 s (em vez de 405 s). No mini servidor o Redis devolve o fim da espera
+    # ~6% atrasado; com 405 s isso passava do limite de 415 s do rq e o worker caía a cada ~6,5 min (1.031 vezes até 02/11).
+    command: ["python", "manage.py", "rqworker", "default", "--worker-ttl", "75"]
+
+  # Backup diário criptografado para a pasta do OneDrive/SharePoint (só no servidor: perfil "backup").
+  backup:
+    build:
+      context: .
+      dockerfile: docker/backup/Dockerfile
+    image: conciliacao-backup:local
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PGHOST: db
+      PGUSER: postgres
+      PGDATABASE: ${POSTGRES_DB:-conciliacao}
+    volumes:
+      - arquivos:/arquivos:ro
+      - ${BACKUP_LOCAL_DIR:-./backups}:/backup-local
+      - ${BACKUP_DESTINO:-./backups/destino}:/destino
+      - ${SEGREDOS_DIR:-./segredos}:/run/segredos:ro
+    depends_on:
+      db: {condition: service_healthy}
+    networks: [interna]
+    profiles: [backup]
+
+  # O serviço "backup" entra na etapa 3.
+
+volumes:
+  pgdata:
+  redisdata:
+  arquivos:
+  logs:
+
+networks:
+  interna:

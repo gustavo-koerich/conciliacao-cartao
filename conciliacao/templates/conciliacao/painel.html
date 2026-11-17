@@ -1,0 +1,118 @@
+{% extends "conciliacao/base.html" %}
+{% load conciliacao_extras %}
+{% block titulo %}Painel {{ comp }}{% endblock %}
+{% block conteudo %}
+{% if not competencias %}
+  <section class="cartao">
+    <h1 class="titulo">Nenhuma competência ainda</h1>
+    <p>Comece importando a fatura em <a href="{% url 'conciliacao:fatura' %}">Fatura</a>.</p>
+  </section>
+{% else %}
+<section class="cartao">
+  <div class="linha-titulo">
+    <h1 class="titulo">Competência {{ comp }}</h1>
+    {% url 'conciliacao:painel_competencia' 'CODIGO' as destino %}{% include "conciliacao/_seletor.html" with destino=destino %}
+  </div>
+  <ol class="etapas">
+    <li class="{% if fatura %}feita{% else %}pendente{% endif %}">
+      <strong>1. Fatura</strong>
+      {% if fatura %}<a href="{% url 'conciliacao:fatura_detalhe' fatura.pk %}">v{{ fatura.versao }} · {{ fatura.get_metodo_leitura_display }}</a> · {{ fatura.resumo.portadores_fechados }}/{{ fatura.resumo.portadores }} fecharam{% else %}não importada{% endif %}
+    </li>
+    <li class="{% if planilhas.1 and planilhas.0 >= planilhas.1 %}feita{% else %}pendente{% endif %}">
+      <strong>2. Formulários</strong> {% if planilhas.1 %}<a href="{% url 'conciliacao:planilhas_competencia' comp.codigo %}">{{ planilhas.0 }} de {{ planilhas.1 }} do período</a>{% else %}não se aplica (sem cartão conferido por formulário){% endif %}
+    </li>
+    {% if notas_pendentes is not None %}<li class="{% if notas_pendentes == 0 %}feita{% else %}pendente{% endif %}"><strong>Notas fiscais</strong> <a href="{% url 'conciliacao:notas' comp.codigo %}">{% if notas_pendentes %}{{ notas_pendentes }} lançamento(s) sem nota{% else %}todas com nota{% endif %}</a></li>{% endif %}
+    <li class="pendente"><strong>3. Comprovantes</strong> links da planilha (download fica para depois)</li>
+    <li class="{% if execucao.status == 'OK' %}feita{% elif execucao %}erro{% else %}pendente{% endif %}">
+      <strong>4. Conciliação</strong>
+      {% if execucao %}{{ execucao.inicio|date:"d/m/Y H:i" }} · janela {{ execucao.parametros.janela_dias }} dias · {% if execucao.status == "OK" %}trava OK{% else %}trava com diferença{% endif %}{% else %}não executada{% endif %}
+    </li>
+    <li class="{% if not ultimo_backup %}pendente{% elif ultimo_backup.status == 'OK' %}feita{% else %}erro{% endif %}">
+      <strong>5. Backup</strong>
+      {% if ultimo_backup %}{{ ultimo_backup.momento|date:"d/m/Y H:i" }} · {% if ultimo_backup.status == "OK" %}OK, no SharePoint{% else %}FALHOU: {{ ultimo_backup.detalhe.erro }}{% endif %}
+        {% if ultimo_teste %}<span class="pequeno">· teste de restauração {{ ultimo_teste.momento|date:"d/m/Y" }} {% if ultimo_teste.status == "OK" %}OK{% else %}com erro{% endif %}</span>{% endif %}
+      {% else %}ainda não rodou{% endif %}
+    </li>
+  </ol>
+</section>
+
+{% if sem_representante %}
+<section class="cartao aviso">
+  <strong>Cartões desta fatura sem representante:</strong>
+  {% for k in sem_representante %}{{ k.final }} ({{ k.nome_fatura }}){% if not forloop.last %}, {% endif %}{% endfor %}.
+  Vincule em <a href="{% url 'conciliacao:cadastros' %}">Cadastros</a> para eles entrarem na conciliação.
+</section>
+{% endif %}
+<section class="cartao">
+  <div class="indicadores">
+    <div><span class="rotulo">Total da fatura</span><span class="numero">{{ comp.total_fatura|moeda }}</span><span class="secundario pequeno">100%</span></div>
+    {% for g in grupos %}
+      <div><span class="rotulo">{{ g.rotulo }}</span><span class="numero">{{ g.valor|moeda }}</span>
+        <span class="secundario pequeno">{{ g.qtd }} lançamentos · {{ g.pct|floatformat:1 }}%</span></div>
+    {% endfor %}
+  </div>
+  <div class="barra" role="img" aria-label="Composição da fatura">
+    {% for g in grupos %}{% if g.pct > 0 %}<span class="{{ g.classe }}" style="width:{{ g.pct|stringformat:".4f" }}%" title="{{ g.rotulo }}: {{ g.valor|moeda }}"></span>{% endif %}{% endfor %}
+  </div>
+  <p class="{% if diferenca == 0 %}secundario{% else %}erro-texto{% endif %}">
+    Soma dos grupos {{ soma|moeda }} · {% if diferenca == 0 %}fecha com o total da fatura ao centavo{% else %}DIFERENÇA de {{ diferenca|moeda }}: a conciliação não pode ser usada{% endif %}.
+  </p>
+</section>
+
+<section class="cartao">
+  <div class="linha-titulo">
+    <h2 class="subtitulo">Por representante</h2>
+    <form method="get" class="seletor">
+      <label for="situacao" class="secundario">Situação</label>
+      <select id="situacao" name="situacao" onchange="this.form.submit()">
+        <option value="">todas</option>
+        {% for s in situacoes %}<option value="{{ s }}"{% if s == filtro %} selected{% endif %}>{{ s }}</option>{% endfor %}
+      </select>
+    </form>
+  </div>
+  <div class="tabela">
+    <table>
+      <thead><tr><th>Representante</th><th>Cartão</th><th class="num">Na fatura</th><th class="num">Conciliado</th><th class="num">Sem justificativa / nota</th><th class="num">Não encontrado na fatura</th><th class="num">Análise</th><th class="num">% conciliado</th><th>Situação</th></tr></thead>
+      <tbody>
+      {% for t in tabela %}
+        <tr>
+          <td><a href="{% url 'conciliacao:representante' comp.codigo t.rep.pk %}">{{ t.rep.nome }}</a></td>
+          <td class="mono">{{ t.cartoes }}</td>
+          <td class="num">{{ t.fatura|moeda }}</td>
+          <td class="num">{{ t.conciliado|moeda }}</td>
+          <td class="num">{{ t.sem_formulario|moeda }}{% if t.sem_formulario_n %} <span class="secundario">({{ t.sem_formulario_n }})</span>{% endif %}</td>
+          <td class="num">{{ t.sem_cobranca_n|default:"—" }}</td>
+          <td class="num">{{ t.analise_n|default:"—" }}</td>
+          <td class="num">{% if t.pct is not None %}{{ t.pct|floatformat:0 }}%{% else %}—{% endif %}</td>
+          <td><span class="pill {{ t.classe }}">{{ t.situacao }}</span></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="9" class="secundario">Nada para mostrar.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="cartao">
+  <h2 class="subtitulo">Alertas que mudam o número</h2>
+  <ul class="alertas">
+    <li><strong>{{ alertas.secoes_com_erro }}</strong> seções da fatura com erro de leitura</li>
+    <li><strong>{{ alertas.cartoes_pendentes }}</strong> cartões não cadastrados</li>
+    <li><strong>{{ alertas.analise }}</strong> itens pendentes de análise (moeda estrangeira, valor ou data ilegível, crédito sem compra)</li>
+    <li><strong>{{ alertas.sem_cobranca }}</strong> despesas no formulário como cartão e sem cobrança</li>
+    <li><strong>{{ alertas.datas_corrigidas }}</strong> datas corrigidas</li>
+    <li><strong>{{ alertas.duplicados }}</strong> duplicidades no formulário</li>
+    <li><strong>{{ alertas.reembolsos }}</strong> reembolsos (fora do cartão)</li>
+    <li><strong>{{ alertas.repetidas }}</strong> lançamentos repetidos na fatura (mesma data, valor e estabelecimento): confira se não é cobrança em dobro</li>
+  </ul>
+  {% if alertas.edicoes_soltas %}
+  <div class="aviso-erro" role="alert">
+    <strong>{{ alertas.edicoes_soltas|length }} edição(ões) ficaram sem lançamento</strong> na versão da fatura em uso
+    (provável troca de versão ou “Ler de novo” que mudou a descrição). Nada foi apagado; refaça na linha certa:
+    <ul>{% for tipo, texto in alertas.edicoes_soltas|slice:":20" %}<li>{{ tipo }}: {{ texto }}</li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}

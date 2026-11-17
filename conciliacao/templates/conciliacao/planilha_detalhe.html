@@ -1,0 +1,6 @@
+{% extends "conciliacao/base.html" %}
+{% block titulo %}Planilha {{ imp.representante }}{% endblock %}
+{% block conteudo %}
+<p><a href="{% if imp.competencia %}{% url 'conciliacao:planilhas_competencia' imp.competencia.codigo %}{% else %}{% url 'conciliacao:planilhas' %}{% endif %}">← Planilhas</a></p>
+{% include "conciliacao/_planilha_resultado.html" %}
+{% endblock %}

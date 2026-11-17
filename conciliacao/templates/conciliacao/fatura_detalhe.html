@@ -1,0 +1,6 @@
+{% extends "conciliacao/base.html" %}
+{% block titulo %}Fatura {{ imp.competencia|default:"" }}{% endblock %}
+{% block conteudo %}
+<p><a href="{% url 'conciliacao:fatura' %}">← Importar fatura</a></p>
+{% include "conciliacao/_fatura_resultado.html" %}
+{% endblock %}

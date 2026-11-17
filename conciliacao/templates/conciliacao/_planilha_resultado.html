@@ -1,0 +1,44 @@
+<div id="resultado"
+     {% if imp.status == "PROCESSANDO" %}hx-get="{% url 'conciliacao:planilha_parcial' imp.pk %}" hx-trigger="every 2s" hx-swap="outerHTML"{% endif %}>
+{% if imp.status == "PROCESSANDO" %}
+  <section class="cartao">
+    <h1 class="titulo">Lendo a planilha de {{ imp.representante }}…</h1>
+    <p class="secundario">{{ imp.arquivo_nome_original }}. Em seguida a conciliação dos cartões dele é refeita. Pode sair desta tela.</p>
+    <progress></progress>
+  </section>
+{% elif r.erro %}
+  <section class="cartao alerta">
+    <h1 class="titulo">Não foi possível ler a planilha de {{ imp.representante }}</h1>
+    <p>{{ r.erro }}</p>
+  </section>
+{% else %}
+  <section class="cartao">
+    <div class="linha-titulo">
+      <h1 class="titulo">Planilha de {{ imp.representante }} · {{ imp.competencia }} · versão {{ imp.versao }}</h1>
+      {% if imp.ativo %}<span class="pill st-ok">em uso</span>{% else %}<span class="pill st-neutro">substituída</span>{% endif %}
+    </div>
+    <div class="indicadores">
+      <div><span class="rotulo">Respostas do período</span><span class="numero">{{ r.linhas }}</span></div>
+      <div><span class="rotulo">No cartão</span><span class="numero">{{ r.cartao }}</span></div>
+      <div><span class="rotulo">Reembolso</span><span class="numero">{{ r.reembolso }}</span></div>
+      <div><span class="rotulo">Duplicadas</span><span class="numero">{{ r.duplicado }}</span></div>
+      <div><span class="rotulo">Datas corrigidas</span><span class="numero">{{ r.data_suspeita }}</span></div>
+      <div><span class="rotulo">Valor ilegível</span><span class="numero">{{ r.valor_invalido }}</span></div>
+    </div>
+    <p class="secundario">
+      {% if r.outros_periodos %}{{ r.outros_periodos }} respostas de outros períodos ficaram de fora (de {{ r.respostas_na_planilha }} na planilha) · {% endif %}
+      {% if r.moeda_estrangeira %}{{ r.moeda_estrangeira }} em moeda estrangeira (vão para análise) · {% endif %}
+      {% if r.pagamento_outro_cartao %}{{ r.pagamento_outro_cartao }} pagas com cartão de outra pessoa (ficam fora) · {% endif %}
+      {% if r.data_sem_correcao %}{{ r.data_sem_correcao }} com data divergente sem correção (análise) · {% endif %}
+      {{ r.sem_link_valido }} sem link de recibo válido ·
+      enviada por {{ imp.usuario|default:"—" }} de <span class="mono">{{ imp.ip|default:"—" }}</span>
+      {% if r.colunas_descartadas %}· colunas ignoradas: {{ r.colunas_descartadas|join:", " }}{% endif %}
+    </p>
+    <h2 class="subtitulo">Ver a conciliação</h2>
+    <div class="acoes">
+      {% if imp.competencia %}<a class="btn" href="{% url 'conciliacao:representante' imp.competencia.codigo imp.representante.pk %}">{{ imp.representante }} · {{ imp.competencia }}</a>
+      <a class="btn secundario" href="{% url 'conciliacao:planilhas_competencia' imp.competencia.codigo %}">Planilhas de {{ imp.competencia }}</a>{% endif %}
+    </div>
+  </section>
+{% endif %}
+</div>

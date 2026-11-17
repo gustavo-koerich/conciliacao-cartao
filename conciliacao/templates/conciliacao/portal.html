@@ -1,0 +1,150 @@
+{% load conciliacao_extras %}<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="same-origin">
+  <title>Pendências do cartão · Empresa Demo</title>
+  <style>
+    :root{
+      color-scheme:light dark;
+      --fundo:#f3f5f9; --cartao:#ffffff; --borda:#d8dde8; --texto:#1c2850; --sec:#4a5470; --mudo:#5d6782;
+      --acao:#178197; --acao-forte:#0f5f6e; --sobre-acao:#fff; --acao-suave:#e7ebf5;
+      --ok-bg:#e3f3ea; --ok-fg:#1f7a4d; --laranja-bg:#fde6d2; --laranja-fg:#b04a00;
+      --erro-bg:#fbe5e3; --erro-fg:#b3261e; --sombra:0 1px 2px rgba(28,40,80,.06);
+    }
+    @media (prefers-color-scheme: dark){:root{
+      --fundo:#11152a; --cartao:#1a2038; --borda:#2e3756; --texto:#e6eaf6; --sec:#b8c0da; --mudo:#9aa4c2;
+      --acao:#5b7fe6; --acao-forte:#3f63cf; --sobre-acao:#fff; --acao-suave:#232b4a;
+      --ok-bg:#163527; --ok-fg:#5fd09a; --laranja-bg:#3b2413; --laranja-fg:#ffa766;
+      --erro-bg:#3d1a19; --erro-fg:#ff8a80; --sombra:0 1px 2px rgba(0,0,0,.3);
+    }}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--fundo);color:var(--texto);font-family:"Segoe UI Variable","Segoe UI",system-ui,Roboto,sans-serif;
+         font-size:16px;line-height:1.45;-webkit-font-smoothing:antialiased}
+    .topo{background:linear-gradient(135deg,var(--acao) 0%,var(--acao-forte) 100%);color:var(--sobre-acao);
+          padding:22px 16px 26px;border-bottom:3px solid #e08a3c}
+    .topo h1{margin:0;font-size:1.3rem;font-weight:700;letter-spacing:-.01em}
+    .topo p{margin:6px 0 0;opacity:.88;font-size:.93rem}
+    .progresso{margin-top:14px;height:8px;border-radius:99px;background:rgba(255,255,255,.28);overflow:hidden}
+    .progresso i{display:block;height:100%;background:var(--sobre-acao);border-radius:99px}
+    main{max-width:640px;margin:-14px auto 0;padding:0 12px 48px;display:grid;gap:12px}
+    .item{background:var(--cartao);border:1px solid var(--borda);border-radius:14px;box-shadow:var(--sombra);overflow:hidden}
+    .cab{display:flex;justify-content:space-between;gap:12px;padding:14px 16px;align-items:flex-start}
+    .loja{font-weight:600}
+    .info{color:var(--sec);font-size:.88rem}
+    .valor{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;font-size:1.05rem}
+    .selo{display:inline-block;font-size:.76rem;font-weight:600;padding:3px 9px;border-radius:99px;margin-top:6px}
+    .selo.pendente{background:var(--erro-bg);color:var(--erro-fg)}
+    .selo.enviado{background:var(--laranja-bg);color:var(--laranja-fg)}
+    .selo.recusado{background:var(--erro-bg);color:var(--erro-fg)}
+    .selo.conciliado{background:var(--ok-bg);color:var(--ok-fg)}
+    details{border-top:1px solid var(--borda)}
+    summary{list-style:none;cursor:pointer;padding:12px 16px;font-weight:600;color:var(--acao);display:flex;justify-content:space-between}
+    summary::-webkit-details-marker{display:none}
+    summary::after{content:"▾";transition:transform .15s}
+    details[open] summary::after{transform:rotate(180deg)}
+    form{padding:0 16px 16px;display:grid;gap:12px}
+    label{display:grid;gap:5px;font-size:.86rem;color:var(--sec);font-weight:500}
+    input[type=text],select,textarea{font:inherit;font-size:16px;color:var(--texto);background:var(--fundo);
+      border:1px solid var(--borda);border-radius:10px;padding:11px 12px;width:100%}
+    textarea{min-height:70px;resize:vertical}
+    input:focus,select:focus,textarea:focus{outline:2px solid var(--acao);outline-offset:1px;border-color:transparent}
+    .foto{display:flex;align-items:center;justify-content:center;gap:8px;min-height:52px;border:2px dashed var(--borda);
+          border-radius:12px;color:var(--acao);font-weight:600;cursor:pointer;background:var(--acao-suave)}
+    .foto input{position:absolute;width:1px;height:1px;opacity:0}
+    .nome-arquivo{font-size:.82rem;color:var(--sec);text-align:center}
+    .check{display:flex;gap:10px;align-items:center;color:var(--texto);font-weight:500}
+    .check input{width:22px;height:22px;accent-color:var(--acao)}
+    button{font:inherit;font-weight:700;min-height:50px;border:0;border-radius:12px;background:var(--acao);color:var(--sobre-acao);cursor:pointer}
+    button:active{transform:scale(.99)}
+    .aviso{padding:12px 16px;border-radius:12px;font-size:.92rem}
+    .aviso.ok{background:var(--ok-bg);color:var(--ok-fg)}
+    .aviso.erro{background:var(--erro-bg);color:var(--erro-fg)}
+    .aviso.recusa{margin:0 16px 12px;background:var(--erro-bg);color:var(--erro-fg)}
+    .resumo{padding:0 16px 14px;color:var(--sec);font-size:.88rem}
+    .anexos{font-size:.82rem;color:var(--ok-fg)}
+    footer{text-align:center;color:var(--mudo);font-size:.8rem;padding:8px 16px 24px}
+  </style>
+</head>
+<body>
+  <header class="topo">
+    <h1>Olá, {{ link.representante.nome }}!</h1>
+    <p>Gastos do cartão da fatura {{ link.competencia }} que ainda estão sem formulário. Responda cada um e envie a foto do comprovante.</p>
+    <p>{{ feitos }} de {{ itens|length }} respondido(s) · link válido até {{ link.expira_em|date:"d/m/Y H:i" }}</p>
+    <div class="progresso" aria-hidden="true"><i style="width:{% if itens %}{% widthratio feitos itens|length 100 %}{% else %}0{% endif %}%"></i></div>
+  </header>
+  <main>
+    {% if salvo %}<div class="aviso ok" role="status">Resposta salva. Obrigado!</div>{% endif %}
+    {% if not itens %}<div class="aviso ok">Não há nada pendente neste link.</div>{% endif %}
+    {% for i in itens %}
+    <article class="item" id="item-{{ i.n }}">
+      <div class="cab">
+        <div>
+          <div class="loja">{{ i.lanc.descricao }}</div>
+          <div class="info">{{ i.lanc.data|date:"d/m/Y" }}{% if i.lanc.cidade %} · {{ i.lanc.cidade }}{% endif %}{% if i.lanc.parcela_total %} · parcela {{ i.lanc.parcela_atual }}/{{ i.lanc.parcela_total }}{% endif %}</div>
+          <span class="selo {{ i.situacao }}">{% if i.situacao == "pendente" %}Falta responder{% elif i.situacao == "enviado" %}Enviado, aguardando o financeiro{% elif i.situacao == "recusado" %}Precisa corrigir{% else %}Conferido{% endif %}</span>
+        </div>
+        <div class="valor">{{ i.lanc.valor|moeda }}</div>
+      </div>
+      {% if i.resposta.recusado_em %}<div class="aviso recusa">O financeiro pediu correção: {{ i.resposta.motivo_recusa }}</div>{% endif %}
+      {% if i.resposta and not i.editavel %}
+        <div class="resumo">{% if i.resposta.nao_reconhece %}Você informou que não reconhece este gasto.{% else %}{{ i.resposta.categoria }} · {{ i.resposta.descricao|truncatechars:80 }}{% endif %}</div>
+      {% endif %}
+      {% if i.editavel %}
+      <details{% if erro_n == i.n or i.situacao == "pendente" and forloop.first %} open{% endif %}>
+        <summary>{% if i.resposta %}Ver ou corrigir minha resposta{% else %}Responder{% endif %}</summary>
+        {% if erro_n == i.n %}<div class="aviso erro" role="alert" style="margin:0 16px 12px">{{ erro }}</div>{% endif %}
+        <form method="post" action="{{ i.n }}/" enctype="multipart/form-data">
+          {% csrf_token %}
+          {% with r=i.resposta %}
+          <label>Categoria
+            <select name="categoria">
+              <option value="">Escolha…</option>
+              {% for c in categorias %}<option value="{{ c }}"{% if erro_n == i.n and dados.categoria == c or erro_n != i.n and r.categoria == c %} selected{% endif %}>{{ c }}</option>{% endfor %}
+            </select>
+          </label>
+          <label>O que foi (descrição)
+            <textarea name="descricao" maxlength="1000" placeholder="ex.: almoço com o Dr. Fulano após o procedimento">{% if erro_n == i.n %}{{ dados.descricao }}{% else %}{{ r.descricao }}{% endif %}</textarea>
+          </label>
+          <label>Médico (se houver)
+            <input type="text" name="medico" maxlength="200" autocomplete="off" value="{% if erro_n == i.n %}{{ dados.medico }}{% else %}{{ r.medico }}{% endif %}">
+          </label>
+          <label>Paciente (se houver)
+            <input type="text" name="paciente" maxlength="200" autocomplete="off" value="{% if erro_n == i.n %}{{ dados.paciente }}{% else %}{{ r.paciente }}{% endif %}">
+          </label>
+          <label>Cidade
+            <input type="text" name="cidade" maxlength="120" value="{% if erro_n == i.n %}{{ dados.cidade }}{% elif r %}{{ r.cidade }}{% else %}{{ i.lanc.cidade }}{% endif %}">
+          </label>
+          <label class="foto">📷 {% if i.comprovantes %}Trocar ou acrescentar a foto do comprovante{% else %}Tirar foto do comprovante{% endif %}
+            <input type="file" name="comprovante" accept="image/*,application/pdf" capture="environment">
+          </label>
+          <div class="nome-arquivo" aria-live="polite">{% if i.comprovantes %}<span class="anexos">✓ {{ i.comprovantes|length }} comprovante(s) já enviado(s)</span>{% endif %}</div>
+          <label class="check"><input type="checkbox" name="nao_reconhece" value="1"{% if r.nao_reconhece %} checked{% endif %}> Não reconheço este gasto</label>
+          <label>Observação (opcional)
+            <input type="text" name="observacao" maxlength="1000" value="{% if erro_n == i.n %}{{ dados.observacao }}{% else %}{{ r.observacao }}{% endif %}">
+          </label>
+          {% endwith %}
+          <button type="submit">Enviar resposta</button>
+        </form>
+      </details>
+      {% endif %}
+    </article>
+    {% endfor %}
+  </main>
+  <footer>Empresa Demo · Conciliação do cartão corporativo<br>Este link é pessoal: não encaminhe.</footer>
+  <script>
+    // mostra o nome da foto escolhida e evita envio duplo
+    document.querySelectorAll('input[type=file]').forEach(function (inp) {
+      inp.addEventListener('change', function () {
+        var alvo = inp.closest('form').querySelector('.nome-arquivo');
+        if (inp.files.length) alvo.textContent = '📎 ' + inp.files[0].name;
+      });
+    });
+    document.querySelectorAll('form').forEach(function (f) {
+      f.addEventListener('submit', function () { var b = f.querySelector('button'); b.disabled = true; b.textContent = 'Enviando…'; });
+    });
+  </script>
+</body>
+</html>

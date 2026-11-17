@@ -1,0 +1,53 @@
+{% extends "conciliacao/base.html" %}
+{% block titulo %}Importar fatura{% endblock %}
+{% block conteudo %}
+<section class="cartao">
+  <h1 class="titulo">Importar fatura</h1>
+  <p class="secundario">Escolha o banco e envie a fatura (Ailos: PDF; Banco do Brasil: PDF ou o Excel exportado do BB). Novo banco: cadastre em Cadastros → Contas de cartão. Com camada de texto, a leitura leva segundos; PDF em imagem passa pelo OCR (cerca de 1 minuto).
+    A fatura só entra em uso se cada portador e o total geral fecharem ao centavo.</p>
+  <form method="post" enctype="multipart/form-data" class="envio">
+    {% csrf_token %}
+    <label class="campo-conta">Banco
+      <select name="conta" id="conta" required>
+        {% for c in contas %}<option value="{{ c.pk }}"{% if forloop.first %} selected{% endif %}>{{ c.nome }} ({{ c.formatos }})</option>{% endfor %}
+      </select>
+    </label>
+    <label for="arquivo" class="soltar">
+      <span>Arraste o arquivo da fatura aqui ou clique para escolher</span>
+      <input type="file" id="arquivo" name="arquivo" accept=".pdf,.xlsx" required>
+    </label>
+    <button class="btn" type="submit">Ler fatura</button>
+  </form>
+</section>
+
+<section class="cartao">
+  <h2 class="subtitulo">Histórico de importações</h2>
+  <div class="tabela">
+    <table>
+      <thead><tr><th>Enviada em</th><th>Banco</th><th>Arquivo</th><th>Competência</th><th>Versão</th><th>Leitura</th><th>Situação</th><th>Usuário</th><th>IP</th></tr></thead>
+      <tbody>
+      {% for i in historico %}
+        <tr>
+          <td><a href="{% url 'conciliacao:fatura_detalhe' i.pk %}">{{ i.criado_em|date:"d/m/Y H:i" }}</a></td>
+          <td>{% if i.conta %}{{ i.conta }}{% elif i.competencia %}{{ i.competencia.conta }}{% else %}—{% endif %}</td>
+          <td>{{ i.arquivo_nome_original }}</td>
+          <td>{{ i.competencia.ano_mes|default:"—" }}</td>
+          <td>{{ i.versao|default:"—" }}</td>
+          <td>{{ i.get_metodo_leitura_display|default:"—" }}</td>
+          <td>
+            {% if i.status == "PROCESSANDO" %}<span class="pill st-neutro">lendo…</span>
+            {% elif i.status == "ERRO" %}<span class="pill st-semform">erro na leitura</span>
+            {% elif i.ativo %}<span class="pill st-ok">em uso</span>
+            {% else %}<span class="pill st-info">aguardando confirmação</span>{% endif %}
+          </td>
+          <td>{{ i.usuario|default:"—" }}</td>
+          <td class="mono">{{ i.ip|default:"—" }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="9" class="secundario">Nenhuma fatura importada ainda.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,34 @@
+{% extends "conciliacao/base.html" %}
+{% block titulo %}Ajuda{% endblock %}
+{% block estilo %}
+<style>
+  .ajuda{max-width:900px}
+  .ajuda h2{font-size:1.15rem;margin:0 0 .6rem}
+  .ajuda h3{font-size:.98rem;margin:1rem 0 .4rem}
+  .ajuda li{margin:.25rem 0;line-height:1.5}
+  .ajuda .passos{counter-reset:p;list-style:none;padding-left:0}
+  .ajuda .passos>li{counter-increment:p;position:relative;padding-left:2.1rem}
+  .ajuda .passos>li::before{content:counter(p);position:absolute;left:0;top:.05rem;width:1.5rem;height:1.5rem;border-radius:50%;
+    display:grid;place-items:center;font-size:.78rem;font-weight:700;background:var(--info-bg);color:var(--info-fg)}
+  .ajuda-sumario ul{columns:2;column-gap:2rem;margin:.5rem 0 0;padding-left:1.2rem}
+  .ajuda-cores{width:100%;border-collapse:collapse}
+  .ajuda-cores td{padding:.45rem .6rem;border-top:1px solid var(--borda, rgba(127,127,127,.2));vertical-align:top}
+  .ajuda-cores td:first-child{white-space:nowrap;width:1%}
+  .ajuda-faq dt{font-weight:600;margin-top:.8rem} .ajuda-faq dd{margin:.2rem 0 0}
+  .ajuda-bloco{scroll-margin-top:80px}
+  @media (max-width:640px){.ajuda-sumario ul{columns:1}.ajuda-cores td:first-child{white-space:normal}}
+</style>
+{% endblock %}
+{% block conteudo %}
+<div class="ajuda">
+  <section class="cartao">
+    <div class="linha-titulo">
+      <h1 class="titulo">Como usar a conciliação</h1>
+      <div class="acoes"><a class="btn secundario" href="{% url 'conciliacao:ajuda_pdf' %}">Versão para imprimir / PDF</a>
+        <a class="btn" href="{% url 'conciliacao:ajuda_representante' %}">Cartão do representante (1 página)</a></div>
+    </div>
+    <p class="secundario">Guia prático para o financeiro e para orientar os representantes. Os exemplos não usam dados reais.</p>
+  </section>
+  <div class="cartao">{% include "conciliacao/_ajuda_conteudo.html" %}</div>
+</div>
+{% endblock %}

@@ -1,0 +1,43 @@
+# Segredos: nunca no git (guardar num cofre de senhas)
+.env
+.env.*
+!.env.example
+*.age
+age-*.key
+segredos/
+credenciais/
+*service-account*.json
+*credentials*.json
+*client_secret*.json
+rclone.conf
+
+# Dados reais de teste (faturas, planilhas, recibos)
+tests/fixtures/*
+!tests/fixtures/.gitkeep
+!tests/fixtures/LEIA-ME.md
+
+# Volumes e arquivos gerados
+dados/
+arquivos/
+backups/
+logs/
+staticfiles/
+*.parquet
+*.xlsx
+*.pdf
+*.dump
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+.coverage
+htmlcov/
+
+# Editor / SO
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store

@@ -1,0 +1,109 @@
+{% extends "conciliacao/base.html" %}
+{% block titulo %}Cadastros{% endblock %}
+{% block conteudo %}
+<section class="cartao">
+  <h1 class="titulo">Cadastros</h1>
+  <p class="secundario">Bancos (contas de cartão), os cartões de cada um e os representantes. Cartões novos entram sozinhos quando a fatura é lida;
+    aqui você diz de quem é cada cartão e como ele é conferido. Toda alteração fica na auditoria.
+    {% if pendentes %}<strong>{{ pendentes }} cartão(ões) com cadastro pendente.</strong>{% endif %}</p>
+  <p class="secundario pequeno"><a class="btn secundario pequeno-btn" href="{% url 'conciliacao:exportar_base' %}">Exportar a base (.zip)</a>
+    Todas as tabelas em CSV (abre no Excel) + dicionário de dados. Nome de paciente sai mascarado.</p>
+</section>
+
+<section class="cartao">
+  <h2 class="subtitulo">Bancos</h2>
+  <div class="tabela"><table>
+    <thead><tr><th>Nome da conta</th><th>Nome curto</th><th>Como ler a fatura</th><th>Ativo</th><th class="num">Competências</th><th></th></tr></thead>
+    <tbody>
+    {% for c in contas %}
+      <tr><td colspan="6" class="sem-borda">
+        <form method="post" action="{% url 'conciliacao:salvar_conta' c.pk %}" class="linha-form">
+          {% csrf_token %}
+          <input name="nome" value="{{ c.nome }}" required maxlength="80" aria-label="Nome da conta">
+          <input name="banco" value="{{ c.banco }}" required maxlength="40" aria-label="Nome curto" class="curto">
+          <select name="leitor" aria-label="Como ler a fatura">{% for v, t in leitores %}<option value="{{ v }}"{% if v == c.leitor %} selected{% endif %}>{{ t }}</option>{% endfor %}</select>
+          <label class="check"><input type="checkbox" name="ativo"{% if c.ativo %} checked{% endif %}> ativo</label>
+          <span class="secundario">{{ c.n_competencias }} competência(s) · endereço: <code>{{ c.slug }}</code></span>
+          <button class="btn secundario" type="submit">Salvar</button>
+        </form>
+      </td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  <h3 class="subtitulo pequeno-titulo">Novo banco</h3>
+  <form method="post" action="{% url 'conciliacao:nova_conta' %}" class="linha-form">
+    {% csrf_token %}
+    <input name="nova-nome" placeholder="Nome da conta (ex.: Itaú Empresas)" required maxlength="80" aria-label="Nome da conta">
+    <input name="nova-banco" placeholder="Nome curto (ex.: Itaú)" required maxlength="40" aria-label="Nome curto" class="curto">
+    <select name="nova-leitor" aria-label="Como ler a fatura">{% for v, t in leitores %}<option value="{{ v }}">{{ t }}</option>{% endfor %}</select>
+    <input type="hidden" name="nova-ativo" value="on">
+    <button class="btn" type="submit">Criar banco</button>
+  </form>
+  <p class="secundario pequeno">Banco que usa um formato de fatura diferente dos dois disponíveis: mande um arquivo de exemplo para eu criar o leitor dele.</p>
+</section>
+
+{% for c in contas %}
+<section class="cartao">
+  <h2 class="subtitulo">Cartões · {{ c.nome }}</h2>
+  <div class="tabela"><table>
+    <thead><tr><th>Final</th><th>Nome na fatura</th><th>Representante</th><th>Como conferir</th><th></th></tr></thead>
+    <tbody>
+    {% for k in c.cartoes.all %}
+      <tr{% if k.pendente_cadastro %} class="pendente"{% endif %}><td colspan="5" class="sem-borda">
+        <form method="post" action="{% url 'conciliacao:salvar_cartao' k.pk %}" class="linha-form">
+          {% csrf_token %}
+          <span class="mono final">{{ k.final }}</span>
+          <input name="nome_fatura" value="{{ k.nome_fatura }}" maxlength="120" aria-label="Nome na fatura">
+          <select name="representante" aria-label="Representante"><option value="">— sem representante —</option>{% for r in reps_ativos %}<option value="{{ r.pk }}"{% if r.pk == k.representante_id %} selected{% endif %}>{{ r.nome }}</option>{% endfor %}</select>
+          <select name="escopo" aria-label="Como conferir">{% for v, t in escopos %}<option value="{{ v }}"{% if v == k.escopo %} selected{% endif %}>{{ t }}</option>{% endfor %}</select>
+          {% if k.pendente_cadastro %}<span class="pill st-ressalva">cadastro pendente</span>{% endif %}
+          <button class="btn secundario" type="submit">Salvar</button>
+        </form>
+      </td></tr>
+    {% empty %}
+      <tr><td colspan="5" class="secundario">Nenhum cartão ainda: eles aparecem quando a primeira fatura deste banco é lida, ou cadastre abaixo.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  <h3 class="subtitulo pequeno-titulo">Novo cartão no {{ c.banco }}</h3>
+  <form method="post" action="{% url 'conciliacao:novo_cartao' c.pk %}" class="linha-form">
+    {% csrf_token %}
+    <input name="final" placeholder="Final (4 dígitos)" required pattern="\d{4}" maxlength="4" inputmode="numeric" aria-label="Final do cartão" class="curto">
+    <input name="nome_fatura" placeholder="Nome como aparece na fatura" required maxlength="120" aria-label="Nome na fatura">
+    <select name="representante" aria-label="Representante"><option value="">— representante —</option>{% for r in reps_ativos %}<option value="{{ r.pk }}">{{ r.nome }}</option>{% endfor %}</select>
+    <input name="novo_representante" placeholder="ou novo representante" maxlength="120" aria-label="Novo representante" class="curto">
+    <select name="escopo" aria-label="Como conferir">{% for v, t in escopos %}<option value="{{ v }}">{{ t }}</option>{% endfor %}</select>
+    <button class="btn" type="submit">Cadastrar cartão</button>
+  </form>
+</section>
+{% endfor %}
+
+<section class="cartao">
+  <h2 class="subtitulo">Representantes</h2>
+  <div class="tabela"><table>
+    <thead><tr><th>Nome</th><th>E-mail</th><th>Ativo</th><th class="num">Cartões</th><th></th></tr></thead>
+    <tbody>
+    {% for r in representantes %}
+      <tr><td colspan="5" class="sem-borda">
+        <form method="post" action="{% url 'conciliacao:salvar_representante' r.pk %}" class="linha-form">
+          {% csrf_token %}
+          <input name="nome" value="{{ r.nome }}" required maxlength="120" aria-label="Nome">
+          <input name="email" type="email" value="{{ r.email }}" maxlength="254" placeholder="e-mail" aria-label="E-mail">
+          <label class="check"><input type="checkbox" name="ativo"{% if r.ativo %} checked{% endif %}> ativo</label>
+          <span class="secundario">{{ r.n_cartoes }} cartão(ões)</span>
+          <button class="btn secundario" type="submit">Salvar</button>
+        </form>
+      </td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  <h3 class="subtitulo pequeno-titulo">Novo representante</h3>
+  <form method="post" action="{% url 'conciliacao:novo_representante' %}" class="linha-form">
+    {% csrf_token %}
+    <input name="novo-nome" placeholder="Nome" required maxlength="120" aria-label="Nome">
+    <input name="novo-email" type="email" placeholder="e-mail (opcional)" maxlength="254" aria-label="E-mail">
+    <input type="hidden" name="novo-ativo" value="on">
+    <button class="btn" type="submit">Cadastrar</button>
+  </form>
+</section>
+{% endblock %}

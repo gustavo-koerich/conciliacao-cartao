@@ -1,0 +1,33 @@
+{# Seletor banco → ano → mês. Espera: seletor (dados), destino (URL com CODIGO no lugar do código da competência). #}
+<form class="seletor-tripla" data-destino="{{ destino }}" onsubmit="return false">
+  <label>Banco<select data-nivel="conta" aria-label="Banco"></select></label>
+  <label>Ano<select data-nivel="ano" aria-label="Ano"></select></label>
+  <label>Mês<select data-nivel="mes" aria-label="Mês"></select></label>
+</form>
+{{ seletor|json_script:"dados-seletor" }}
+<script>
+(function () {
+  const dados = JSON.parse(document.getElementById("dados-seletor").textContent);
+  const form = document.currentScript.previousElementSibling.previousElementSibling;
+  const [selConta, selAno, selMes] = ["conta", "ano", "mes"].map(n => form.querySelector(`[data-nivel=${n}]`));
+  const opcao = (v, t, sel) => `<option value="${v}"${sel ? " selected" : ""}>${t}</option>`;
+  const ir = codigo => { if (codigo !== dados.codigo) location.href = form.dataset.destino.replace("CODIGO", codigo); };
+  function anos(conta, anoPreferido) {
+    const lista = Object.keys(dados.arvore[conta].anos).sort().reverse();
+    const ano = lista.includes(anoPreferido) ? anoPreferido : lista[0];
+    selAno.innerHTML = lista.map(a => opcao(a, a, a === ano)).join("");
+    meses(conta, ano);
+  }
+  function meses(conta, ano, mesPreferido) {
+    const lista = dados.arvore[conta].anos[ano];
+    const atual = lista.find(m => m[1] === dados.codigo);
+    const escolhido = atual || lista.find(m => m[0] === mesPreferido) || lista[lista.length - 1];
+    selMes.innerHTML = lista.map(m => opcao(m[1], m[2], m === escolhido)).join("");
+  }
+  selConta.innerHTML = Object.entries(dados.arvore).map(([slug, c]) => opcao(slug, c.nome, slug === dados.conta)).join("");
+  anos(dados.conta, dados.ano);
+  selConta.addEventListener("change", () => { anos(selConta.value, selAno.value); ir(selMes.value); });
+  selAno.addEventListener("change", () => { meses(selConta.value, selAno.value); ir(selMes.value); });
+  selMes.addEventListener("change", () => ir(selMes.value));
+})();
+</script>

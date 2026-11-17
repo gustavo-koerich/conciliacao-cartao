@@ -1,0 +1,98 @@
+{% extends "conciliacao/base.html" %}
+{% block titulo %}Planilhas {{ comp }}{% endblock %}
+{% block conteudo %}
+{% if not competencias %}
+  <section class="cartao">
+    <h1 class="titulo">Nenhuma competência ainda</h1>
+    <p>As planilhas são enviadas por período. Importe primeiro a fatura em <a href="{% url 'conciliacao:fatura' %}">Fatura</a>.</p>
+  </section>
+{% else %}
+<section class="cartao">
+  <div class="linha-titulo">
+    <h1 class="titulo">Planilhas · {{ comp }}</h1>
+    {% url 'conciliacao:planilhas_competencia' 'CODIGO' as destino %}{% include "conciliacao/_seletor.html" with destino=destino %}
+  </div>
+  <p class="secundario">Período {{ comp.periodo_ini|date:"d/m/Y" }} a {{ comp.fechamento|date:"d/m/Y" }}.
+    Envie a planilha de respostas do formulário (.xlsx) de cada representante. Pode ser a planilha completa:
+    ficam só as respostas com data neste período. Reenviar substitui a versão do período, sem mexer nos outros meses.</p>
+  <div class="tabela">
+    <table>
+      <thead><tr><th>Representante</th><th>Cartões</th><th>Planilha do período</th><th>Enviar planilha</th></tr></thead>
+      <tbody>
+      {% for l in linhas %}
+        <tr>
+          <td>{{ l.rep.nome }}</td>
+          <td class="mono">{% for c in l.cartoes %}{{ c.final }}{% if c.escopo != "CONCILIAR_FORMULARIO" %} <span class="pill st-neutro">{{ c.get_escopo_display }}</span>{% endif %}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
+          <td>
+            {% if l.planilha %}
+              <a href="{% url 'conciliacao:planilha_detalhe' l.planilha.pk %}">v{{ l.planilha.versao }}</a> ·
+              {{ l.planilha.resumo.linhas }} respostas do período · {{ l.planilha.ativado_em|date:"d/m/Y H:i" }}
+            {% elif l.concilia %}<span class="pill st-semform">não enviada</span>
+            {% else %}<span class="pill st-neutro">não usa formulário (cartão de notas fiscais ou fora do escopo)</span>{% endif %}
+          </td>
+          <td>
+            {% if not l.concilia %}<span class="secundario">—</span>
+            {% elif not comp.fechada %}
+            <form method="post" action="{% url 'conciliacao:planilha_enviar' comp.codigo l.rep.pk %}" enctype="multipart/form-data" class="envio-linha">
+              {% csrf_token %}
+              <input type="file" name="arquivo" id="arquivo-{{ l.rep.pk }}" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required aria-label="Planilha de {{ l.rep.nome }}">
+              <button class="btn secundario" type="submit">Enviar</button>
+            </form>
+            {% else %}<span class="secundario">competência fechada</span>{% endif %}
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="4" class="secundario">Nenhum representante ativo. Cadastre em Cadastros.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{% if para_geral %}
+<section class="cartao">
+  <h2 class="subtitulo">Planilha geral (todos os representantes)</h2>
+  <p class="secundario">A planilha GERAL REPRESENTANTES (aba ATUALIZADOS, com "Nome da Origem"). O sistema separa por representante
+    e pela data de cada gasto, e entra nas faturas marcadas: em cada uma, substitui a planilha do representante (a anterior fica no histórico).
+    Linhas iguais no mesmo dia contam como gastos diferentes.</p>
+  <form method="post" action="{% url 'conciliacao:planilha_geral_enviar' comp.codigo %}" enctype="multipart/form-data" class="envio">
+    {% csrf_token %}
+    <label for="geral-arquivo" class="soltar"><span>Planilha geral (.xlsx)</span>
+      <input type="file" id="geral-arquivo" name="arquivo" accept=".xlsx" required></label>
+    <fieldset class="meses"><legend class="secundario pequeno">Em quais faturas</legend>
+      {% for c in para_geral %}<label class="check"><input type="checkbox" name="competencias" value="{{ c.pk }}"{% if c.pk == comp.pk %} checked{% endif %}> {{ c.ano_mes }}</label>{% endfor %}
+    </fieldset>
+    <button class="btn" type="submit">Enviar planilha geral</button>
+  </form>
+</section>
+{% endif %}
+
+{% if sem_representante %}
+<section class="cartao aviso">
+  <strong>Cartões desta fatura sem representante:</strong>
+  {% for k in sem_representante %}{{ k.final }} ({{ k.nome_fatura }}){% if not forloop.last %}, {% endif %}{% endfor %}.
+  Vincule em <a href="{% url 'conciliacao:cadastros' %}">Cadastros</a> para eles entrarem na conciliação.
+</section>
+{% endif %}
+<section class="cartao">
+  <h2 class="subtitulo">Histórico de importações · {{ comp }}</h2>
+  <div class="tabela">
+    <table>
+      <thead><tr><th>Enviada em</th><th>Representante</th><th>Arquivo</th><th>Versão</th><th>Situação</th><th>Usuário</th><th>IP</th></tr></thead>
+      <tbody>
+      {% for i in historico %}
+        <tr>
+          <td><a href="{% url 'conciliacao:planilha_detalhe' i.pk %}">{{ i.criado_em|date:"d/m/Y H:i" }}</a></td>
+          <td>{{ i.representante }}</td><td>{{ i.arquivo_nome_original }}</td><td>v{{ i.versao }}</td>
+          <td>{% if i.status == "PROCESSANDO" %}<span class="pill st-neutro">lendo…</span>{% elif i.status == "ERRO" %}<span class="pill st-semform">erro</span>{% elif i.ativo %}<span class="pill st-ok">em uso</span>{% else %}<span class="pill st-neutro">substituída</span>{% endif %}</td>
+          <td>{{ i.usuario|default:"—" }}</td><td class="mono">{{ i.ip|default:"—" }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="7" class="secundario">Nenhuma planilha enviada para este período.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

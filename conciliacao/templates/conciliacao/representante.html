@@ -1,0 +1,271 @@
+{% extends "conciliacao/base.html" %}
+{% load conciliacao_extras %}
+{% block titulo %}{{ rep.nome }} {{ comp }}{% endblock %}
+{% block conteudo %}
+<p><a href="{% url 'conciliacao:painel_competencia' comp.codigo %}">← Painel {{ comp }}</a></p>
+<section class="cartao">
+  <h1 class="titulo">{{ rep.nome }} · {{ comp }}</h1>
+  <div class="indicadores">
+    {% for rotulo, valor, classe in indicadores %}
+      <div class="{{ classe }}-borda"><span class="rotulo">{{ rotulo }}</span><span class="numero">{{ valor|moeda }}</span></div>
+    {% endfor %}
+  </div>
+  <nav class="filtros" aria-label="Filtrar por situação">
+    <a class="pill {% if not filtro %}st-info{% else %}st-neutro{% endif %}" href="?">Todos ({{ total }})</a>
+    {% for s, rotulo, n, classe in filtros %}
+      <a class="pill {% if filtro == s %}{{ classe }} ativo{% else %}st-neutro{% endif %}" href="?status={{ s }}">{{ rotulo }} ({{ n }})</a>
+    {% endfor %}
+  </nav>
+  <p class="legenda secundario pequeno">
+    <span class="amostra linha-verde"></span> conciliado
+    <span class="amostra linha-amarela"></span> precisa de atenção
+    <span class="amostra linha-laranja"></span> respondido pelo representante, aguardando aprovação
+    <span class="amostra linha-vermelha"></span> falta informação
+    <span class="amostra linha-neutra"></span> informativo (reembolso, estorno, fora do escopo, duplicado)
+  </p>
+</section>
+
+{% if editavel %}
+<section class="cartao">
+  <div class="linha-titulo">
+    <h2 class="subtitulo">Pendências para o representante responder</h2>
+    {% if pendentes_portal %}
+    <form method="post" action="{% url 'conciliacao:gerar_link' comp.codigo rep.pk %}" class="linha-form">
+      {% csrf_token %}
+      <label class="secundario pequeno" for="dias">Link válido por</label>
+      <select id="dias" name="dias">{% for d in validades %}<option value="{{ d }}"{% if d == 1 %} selected{% endif %}>{{ d }} dia{{ d|pluralize }}</option>{% endfor %}</select>
+      <button class="btn" type="submit">Gerar link ({{ pendentes_portal }} gasto{{ pendentes_portal|pluralize }})</button>
+    </form>
+    {% endif %}
+  </div>
+  <p class="secundario pequeno">O representante abre o link no celular, responde cada gasto da fatura que está sem formulário e tira a foto do comprovante.
+    A linha fica <strong>laranja</strong> até você aprovar (verde) ou recusar (ele vê o motivo e corrige pelo mesmo link).</p>
+  {% if links %}
+  <div class="tabela"><table>
+    <thead><tr><th>Gerado em</th><th>Por</th><th>Vale até</th><th>Itens</th><th>Respondidos</th><th>Aberto</th><th>Situação</th><th></th></tr></thead>
+    <tbody>
+    {% for lk in links %}
+      <tr><td>{{ lk.criado_em|date:"d/m/Y H:i" }}</td><td>{{ lk.criado_por|default:"—" }}</td><td>{{ lk.expira_em|date:"d/m/Y H:i" }}</td>
+        <td>{{ lk.chaves|length }}</td><td>{{ lk.respondidos }}</td>
+        <td>{% if lk.aberto_em %}{{ lk.aberto_em|date:"d/m H:i" }} ({{ lk.acessos }}×){% else %}<span class="secundario">ainda não</span>{% endif %}</td>
+        <td>{% if lk.revogado_em %}<span class="pill st-neutro">revogado</span>{% elif lk.valido %}<span class="pill st-ok">válido</span>{% else %}<span class="pill st-neutro">vencido</span>{% endif %}</td>
+        <td>{% if lk.valido %}<form method="post" action="{% url 'conciliacao:revogar_link' lk.pk %}" class="inline">{% csrf_token %}<button class="btn secundario pequeno-btn" type="submit">Revogar</button></form>{% endif %}
+          {% if usuario_acesso.admin or user.is_staff %}<form method="post" action="{% url 'conciliacao:excluir_teste_link' lk.pk %}" class="inline"
+            onsubmit="return confirm('Excluir este link como TESTE? Apaga o link, as respostas e os comprovantes enviados por ele, e as linhas do registro ligadas a eles. Fica só uma linha dizendo que foi excluído. Não dá para desfazer.')">{% csrf_token %}<button class="btn secundario pequeno-btn" type="submit" title="Só administradores: apaga dados de teste">Excluir (teste)</button></form>{% endif %}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% elif not pendentes_portal %}<p class="secundario pequeno">Nenhum gasto sem formulário nesta fatura.</p>{% endif %}
+</section>
+{% endif %}
+
+<section class="cartao">
+  <div class="tabela">
+    <table class="conciliacao">
+      <thead><tr>
+        <th>Data</th><th>Na fatura</th><th class="num">Valor fatura</th><th class="num">Valor declarado</th>
+        <th>No formulário</th><th>Médico</th><th>Paciente</th><th>Finalidade</th><th>Evento</th><th>Comprovante</th><th>Situação</th>
+      </tr></thead>
+      <tbody>
+      {% for r in linhas %}
+        <tr class="{{ r.cor }}{% if r.destacada %} destacada{% endif %}" id="r-{{ r.ref }}">
+          <td>{% if r.fatura_lanc %}{{ r.fatura_lanc.data|date:"d/m/Y" }}{% else %}{{ r.form_despesa.data_efetiva|date:"d/m/Y"|default:"—" }}{% endif %}</td>
+          <td>{% if r.fatura_lanc %}{{ r.fatura_lanc.descricao }}{% if r.fatura_lanc.parcela_total %} {{ r.fatura_lanc.parcela_atual }}/{{ r.fatura_lanc.parcela_total }}{% endif %}<br><span class="secundario pequeno">{{ r.fatura_lanc.cidade }}</span>{% else %}<span class="secundario">não está na fatura</span>{% endif %}
+            {% if r.repetida %}<br><span class="pill st-ressalva" title="Mesma data, valor e estabelecimento aparece {{ r.repetida }} vezes nesta fatura. Confira no recibo se não é cobrança em dobro.">possível cobrança em dobro ({{ r.repetida }}×)</span>{% endif %}
+            {% if r.estorno_de %}<br><span class="pill st-info" title="Compra de mesmo valor e cartão em fatura anterior. Se for o estorno dela, escolha a situação Estorno compensado.">provável estorno da compra de {{ r.estorno_de.data|date:"d/m/Y" }} ({{ r.estorno_de.importacao.competencia }}): {{ r.estorno_de.descricao|truncatechars:30 }}</span>{% endif %}</td>
+          <td class="num">{% if r.fatura_lanc %}{{ r.fatura_lanc.valor|moeda }}{% else %}—{% endif %}</td>
+          <td class="num{% if r.diferenca_valor %} divergente{% endif %}">{% if r.form_despesa %}
+            {% if r.correcao %}
+              <strong title="corrigido por {{ r.correcao.usuario|default:'—' }}: {{ r.correcao.motivo }}">{{ r.correcao.valor_corrigido|moeda }}</strong>
+              <br><s class="secundario pequeno" title="valor informado pelo representante">{% if r.form_despesa.valor is not None %}{{ r.form_despesa.valor|moeda }}{% else %}{{ r.form_despesa.valor_original|default:"vazio" }}{% endif %}</s>
+              <br><span class="pill st-info">valor corrigido</span>
+            {% elif r.form_despesa.valor is not None %}{{ r.form_despesa.valor|moeda }}{% else %}<span title="valor como veio na planilha">{{ r.form_despesa.valor_original|default:"—" }}</span>{% endif %}
+            {% if r.diferenca_valor %}<br><span class="pequeno" title="informado − fatura (vale o valor da fatura)">diferença {{ r.diferenca|moeda }}</span>
+              {% if r.divergente %}<span class="pill st-semform">Divergente</span>{% endif %}{% endif %}
+            {% if r.opcoes %}
+              <details class="corrigir"><summary class="pequeno">corrigir valor</summary>
+                <form method="post" action="{% url 'conciliacao:corrigir_valor' r.pk %}" class="corrigir-form">
+                  {% csrf_token %}<input type="hidden" name="voltar" value="{{ voltar }}">
+                  <input type="text" name="valor" inputmode="decimal" required aria-label="Valor correto"
+                         placeholder="{% if r.fatura_lanc %}na fatura: {{ r.fatura_lanc.valor|moeda }}{% else %}ex.: 45,90{% endif %}">
+                  <input type="text" name="motivo" required minlength="3" maxlength="500" aria-label="Motivo da correção" placeholder="motivo (ex.: conferido no recibo)">
+                  <button class="btn pequeno-btn" type="submit">salvar</button>
+                  {% if r.correcao %}<button class="btn secundario pequeno-btn" type="submit" name="acao" value="desfazer" formnovalidate>voltar ao informado</button>{% endif %}
+                </form>
+              </details>
+            {% endif %}
+          {% else %}—{% endif %}</td>
+          <td class="formulario">{% if r.form_despesa %}
+            {% if r.opcoes %}
+              <form method="post" action="{% url 'conciliacao:corrigir_despesa' r.pk %}" class="categoria-form"{% if r.corr_categoria %} data-desfazer="1"{% endif %}>
+                {% csrf_token %}<input type="hidden" name="voltar" value="{{ voltar }}"><input type="hidden" name="campo" value="CATEGORIA">
+                <select name="valor" class="escolha-categoria" aria-label="Categoria do gasto">
+                  {% if r.corr_categoria %}<option value="">↺ voltar ao informado ({{ r.form_despesa.despesa|default:"vazio" }})</option>
+                  {% elif not r.categoria %}<option value="" selected>informado: {{ r.form_despesa.despesa|default:"—" }}</option>{% endif %}
+                  {% for c in categorias %}<option value="{{ c }}"{% if c == r.categoria %} selected{% endif %}>{{ c }}</option>{% endfor %}
+                </select>
+              </form>
+            {% else %}{{ r.categoria|default:r.form_despesa.despesa }}{% endif %}
+            {% if r.corr_categoria %}<span class="pill st-info" title="informado: {{ r.corr_categoria.original|default:'vazio' }} · corrigido por {{ r.corr_categoria.usuario|default:'—' }}">categoria corrigida</span>{% endif %}
+            <br><span class="secundario pequeno">{{ r.form_despesa.descricao|truncatechars:60 }}</span>
+            <div class="pequeno data-form">data no formulário:
+              {% if r.corr_data %}<strong title="corrigida por {{ r.corr_data.usuario|default:'—' }}{% if r.corr_data.motivo %}: {{ r.corr_data.motivo }}{% endif %}">{{ r.data_form|date:"d/m/Y" }}</strong>
+                <s class="secundario" title="informada pelo representante">{{ r.form_despesa.data_informada|date:"d/m/Y"|default:"ilegível" }}</s>
+              {% else %}{{ r.data_form|date:"d/m/Y"|default:"ilegível" }}{% if r.form_despesa.data_suspeita %} <span class="secundario">(informado {{ r.form_despesa.data_informada|date:"d/m/Y"|default:"data ilegível" }})</span>{% endif %}{% endif %}
+              {% if r.opcoes %}
+              <details class="corrigir"><summary class="pequeno">corrigir data</summary>
+                <form method="post" action="{% url 'conciliacao:corrigir_despesa' r.pk %}" class="corrigir-form">
+                  {% csrf_token %}<input type="hidden" name="voltar" value="{{ voltar }}"><input type="hidden" name="campo" value="DATA">
+                  <input type="date" name="valor" required aria-label="Data correta" value="{{ r.data_form|date:'Y-m-d' }}">
+                  <input type="text" name="motivo" maxlength="500" aria-label="Motivo" placeholder="motivo (opcional)">
+                  <button class="btn pequeno-btn" type="submit">salvar</button>
+                  {% if r.corr_data %}<button class="btn secundario pequeno-btn" type="submit" name="acao" value="desfazer" formnovalidate>voltar ao informado</button>{% endif %}
+                </form>
+              </details>
+              {% endif %}
+            </div>
+          {% elif r.opcoes and r.fatura_lanc %}
+            <form method="post" action="{% url 'conciliacao:corrigir_despesa' r.pk %}" class="categoria-form"{% if r.corr_categoria %} data-desfazer="1"{% endif %}>
+              {% csrf_token %}<input type="hidden" name="voltar" value="{{ voltar }}"><input type="hidden" name="campo" value="CATEGORIA">
+              <select name="valor" class="escolha-categoria" aria-label="Categoria do gasto">
+                <option value=""{% if not r.categoria %} selected{% endif %}>{% if r.corr_categoria %}↺ voltar a Não informado{% else %}Não informado{% endif %}</option>
+                {% for c in categorias %}<option value="{{ c }}"{% if c == r.categoria %} selected{% endif %}>{{ c }}</option>{% endfor %}
+              </select>
+            </form>
+            {% if r.corr_categoria %}<span class="pill st-info" title="informada por {{ r.corr_categoria.usuario|default:'—' }} (sem formulário)">categoria informada</span>{% endif %}
+            <br><span class="secundario pequeno">sem formulário</span>
+          {% else %}<span class="secundario">{{ r.categoria|default:"Não informado" }}</span>{% endif %}</td>
+          <td>{{ r.form_despesa.medico_canonico|default:"" }}</td>
+          <td>{{ r.form_despesa.paciente|default:"" }}</td>
+          {% if r.opcoes %}
+          <td colspan="2" class="finalidade">
+            <form method="post" action="{% url 'conciliacao:escolher_finalidade' r.pk %}" class="finalidade-form">
+              {% csrf_token %}<input type="hidden" name="voltar" value="{{ voltar }}">
+              <select name="finalidade" class="escolha-finalidade" aria-label="Finalidade">
+                <option value="">—</option>
+                {% for v, rot in finalidades %}<option value="{{ v }}"{% if r.escolha.finalidade == v %} selected{% endif %}>{{ rot }}</option>{% endfor %}
+              </select>
+              <select name="evento" class="escolha-evento" aria-label="Evento"{% if r.escolha.finalidade != "EVENTO" %} disabled{% endif %}>
+                <option value="">{% if r.escolha.finalidade == "EVENTO" %}escolha o evento{% else %}—{% endif %}</option>
+                {% for e in eventos %}<option value="{{ e.pk }}"{% if r.escolha.evento_id == e.pk %} selected{% endif %}>{{ e.nome }}</option>{% endfor %}
+                {% if r.escolha.evento and not r.escolha.evento.ativo %}<option value="{{ r.escolha.evento_id }}" selected>{{ r.escolha.evento.nome }} (inativo)</option>{% endif %}
+                <option value="novo">+ Cadastrar novo evento</option>
+              </select>
+              <span class="novo-evento" hidden>
+                <input type="text" name="novo_evento" maxlength="120" placeholder="nome do evento" aria-label="Nome do novo evento">
+                <button class="btn pequeno-btn" type="submit">salvar</button>
+              </span>
+            </form>
+            {% if r.escolha.usuario %}<span class="secundario pequeno" title="em {{ r.escolha.criado_em|date:'d/m/Y H:i' }}">por {{ r.escolha.usuario }}</span>{% endif %}
+          </td>
+          {% else %}
+          <td>{{ r.escolha.get_finalidade_display|default:"" }}</td><td>{{ r.escolha.evento.nome|default:"" }}</td>
+          {% endif %}
+          <td class="comprovante">
+            {% if r.form_despesa.link_comprovante|slice:":4" == "http" %}<a href="{{ r.form_despesa.link_comprovante }}" target="_blank" rel="noopener noreferrer">abrir</a>{% elif r.form_despesa.importacao.resumo.planilha_geral %}<span class="secundario pequeno" title="A planilha geral é conferida pelo financeiro">conferido na planilha geral</span>{% endif %}
+            {% for a in r.anexos %}
+              <span class="anexo"><a href="{% url 'conciliacao:ver_anexo' a.pk %}" target="_blank" rel="noopener">{{ a.nome_original|truncatechars:22 }}</a>
+              {% if editavel %}<form method="post" action="{% url 'conciliacao:remover_anexo' a.pk %}" class="inline">{% csrf_token %}<input type="hidden" name="voltar" value="{{ voltar }}"><button class="link-remover" type="submit" title="Remover {{ a.nome_original }}" aria-label="Remover {{ a.nome_original }}">×</button></form>{% endif %}</span>
+            {% endfor %}
+            {% if r.opcoes %}
+              <form method="post" action="{% url 'conciliacao:anexar_comprovante' r.pk %}" enctype="multipart/form-data" class="anexar">
+                {% csrf_token %}<input type="hidden" name="voltar" value="{{ voltar }}">
+                <label class="btn secundario pequeno-btn" for="anexo-{{ r.pk }}">adicionar</label>
+                <input type="file" id="anexo-{{ r.pk }}" name="arquivo" accept=".pdf,.jpg,.jpeg,.png,.webp" required onchange="this.form.submit()" class="oculto">
+              </form>
+            {% elif not r.anexos and not r.form_despesa.link_comprovante %}<span class="secundario">—</span>{% endif %}
+          </td>
+          <td class="situacao">
+            {% if r.opcoes %}
+              <form method="post" action="{% url 'conciliacao:alterar_situacao' r.pk %}" class="situacao-form">
+                {% csrf_token %}<input type="hidden" name="voltar" value="{{ voltar }}">
+                <label class="oculto" for="st-{{ r.pk }}">Situação</label>
+                <select id="st-{{ r.pk }}" name="status" class="escolha-situacao">
+                  {% for valor, rotulo in r.opcoes %}<option value="{{ valor }}" data-cor="{{ cores|get_item:valor|default:'linha-neutra' }}"{% if valor in exigem_motivo %} data-motivo="1"{% endif %}{% if valor == r.status %} selected{% endif %}>{{ rotulo }}</option>{% endfor %}
+                  {% if r.ajuste %}<option value="AUTOMATICO">↺ voltar ao automático</option>{% endif %}
+                </select>
+                <input type="text" name="observacao" maxlength="500" placeholder="motivo (opcional)" aria-label="Motivo do ajuste" class="extra">
+                <button class="btn pequeno-btn extra" type="submit">aplicar</button>
+              </form>
+            {% else %}
+              <span class="pill {{ classes|get_item:r.status }}">{{ r.status|situacao }}</span>
+            {% endif %}
+            {% if r.resposta %}
+              <div class="resposta-rep">
+                <strong>Resposta do representante</strong>{% if r.resposta.respondido_em %} · {{ r.resposta.respondido_em|date:"d/m H:i" }}{% endif %}<br>
+                {% if r.resposta.nao_reconhece %}<span class="erro-texto">Não reconhece este gasto.</span>{% else %}{{ r.resposta.categoria }}{% if r.resposta.descricao %} · {{ r.resposta.descricao }}{% endif %}{% endif %}
+                {% if r.resposta.medico %}<br>Médico: {{ r.resposta.medico }}{% endif %}{% if r.resposta.paciente %}<br>Paciente: {{ r.resposta.paciente }}{% endif %}
+                {% if r.resposta.observacao %}<br><span class="secundario">Obs.: {{ r.resposta.observacao }}</span>{% endif %}
+                {% if r.resposta.aprovado_em %}<br><span class="pill st-ok">aprovada por {{ r.resposta.aprovado_por|default:"—" }}</span>{% endif %}
+                {% if r.resposta.recusado_em %}<br><span class="pill st-semform">recusada: {{ r.resposta.motivo_recusa }}</span>{% endif %}
+                {% if editavel and r.status == "AGUARDANDO_APROVACAO" %}
+                  <div class="acoes">
+                    <form method="post" action="{% url 'conciliacao:aprovar_resposta' r.pk %}" class="inline">{% csrf_token %}<input type="hidden" name="voltar" value="{{ voltar }}"><button class="btn pequeno-btn" type="submit">Aprovar</button></form>
+                    <details class="corrigir"><summary>recusar</summary>
+                      <form method="post" action="{% url 'conciliacao:recusar_resposta' r.pk %}" class="corrigir-form">{% csrf_token %}<input type="hidden" name="voltar" value="{{ voltar }}">
+                        <input type="text" name="motivo" required minlength="3" maxlength="500" placeholder="o que corrigir (o representante vê)" aria-label="Motivo da recusa">
+                        <button class="btn secundario pequeno-btn" type="submit">Recusar</button>
+                      </form>
+                    </details>
+                  </div>
+                {% endif %}
+              </div>
+            {% endif %}
+            {% if r.ajuste %}<span class="pill st-info">ajuste manual</span>{% endif %}
+            {% if r.motivo %}<span class="secundario pequeno motivo">{{ r.motivo }}</span>{% endif %}
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="11" class="secundario">Nada nesta situação.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+<script>
+  // Categoria: escolher na lista já salva; "voltar ao informado" desfaz a correção.
+  document.querySelectorAll("select.escolha-categoria").forEach(function (sel) {
+    sel.addEventListener("change", function () {
+      var form = sel.form;
+      if (!sel.value) {
+        if (!form.dataset.desfazer) return;
+        var acao = document.createElement("input");
+        acao.type = "hidden"; acao.name = "acao"; acao.value = "desfazer";
+        form.appendChild(acao);
+      }
+      form.submit();
+    });
+  });
+  // Finalidade / Evento: o Evento só se habilita (e é obrigatório) com a finalidade EVENTO; trocar a finalidade
+  // limpa o evento. "+ Cadastrar novo evento" abre o campo do nome. Fora isso, escolher já salva.
+  document.querySelectorAll("form.finalidade-form").forEach(function (form) {
+    var fin = form.querySelector(".escolha-finalidade"), ev = form.querySelector(".escolha-evento"),
+        novo = form.querySelector(".novo-evento"), nome = novo.querySelector("input");
+    fin.addEventListener("change", function () {
+      ev.value = ""; novo.hidden = true; nome.required = false;
+      if (fin.value === "EVENTO") { ev.disabled = false; ev.required = true; ev.options[0].text = "escolha o evento"; ev.focus(); }
+      else { ev.disabled = true; ev.required = false; form.submit(); }
+    });
+    ev.addEventListener("change", function () {
+      if (ev.value === "novo") { novo.hidden = false; nome.required = true; nome.focus(); }
+      else if (ev.value) { novo.hidden = true; nome.required = false; form.submit(); }
+    });
+  });
+  // Escolheu a situação: a linha muda de cor na hora e já salva. "Conciliado com ressalva" pede o motivo antes.
+  document.querySelectorAll("select.escolha-situacao").forEach(function (sel) {
+    sel.addEventListener("change", function () {
+      var op = sel.selectedOptions[0], form = sel.form;
+      if (op.dataset.cor) sel.closest("tr").className = op.dataset.cor;
+      if (op.dataset.motivo) {
+        form.classList.add("alterado");
+        var motivo = form.querySelector("[name=observacao]");
+        motivo.required = true;
+        motivo.placeholder = "motivo da ressalva (obrigatório)";
+        motivo.focus();
+      } else {
+        form.submit();
+      }
+    });
+  });
+</script>
+{% endblock %}

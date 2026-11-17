@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Despesas do cartão · Representantes</title>
+  <style>
+    @page{size:A4;margin:12mm}
+    :root{color-scheme:light}
+    body{font:11pt/1.45 "Segoe UI",system-ui,sans-serif;color:#1d2a30;background:#fff;margin:0 auto;max-width:780px;padding:14px}
+    h1{font-size:19pt;margin:0} .sub{color:#55636a;margin:2px 0 12px}
+    .bloco{border:1px solid #d6dbde;border-radius:12px;padding:10px 14px;margin-bottom:12px;break-inside:avoid}
+    .bloco h2{font-size:13pt;margin:0 0 6px;display:flex;align-items:center;gap:8px}
+    .bloco h2 span{background:#2B4C7E;color:#fff;border-radius:50%;width:24px;height:24px;display:inline-grid;place-items:center;font-size:11pt}
+    table{width:100%;border-collapse:collapse} td{padding:4px 6px;border-top:1px solid #e3e7ea;vertical-align:top}
+    td:first-child{white-space:nowrap;font-weight:600;width:1%}
+    ol{margin:4px 0;padding-left:20px} li{margin:3px 0}
+    .ok{color:#17573F;font-weight:600} .nao{color:#A3361A;font-weight:600}
+    .dica{background:#FDE6D2;color:#6b2e00;border-radius:8px;padding:6px 10px;margin-top:6px;font-size:10pt}
+    .laranja{background:#FDE6D2;color:#B04A00;border-radius:999px;padding:0 8px;font-weight:600}
+    .verde{background:#E2EFEA;color:#17573F;border-radius:999px;padding:0 8px;font-weight:600}
+    code{background:#f3f5f7;padding:0 4px;border-radius:4px}
+    .imprimir{float:right;font:inherit;padding:6px 12px;border-radius:8px;border:1px solid #2B4C7E;background:#2B4C7E;color:#fff;cursor:pointer}
+    @media print{.imprimir{display:none} body{padding:0}}
+  </style>
+</head>
+<body>
+  {% if not estatico %}<button class="imprimir" onclick="window.print()">Imprimir / salvar PDF</button>{% endif %}
+  <h1>Despesas do cartão corporativo</h1>
+  <p class="sub">O que o representante precisa fazer · Empresa Demo</p>
+
+  <div class="bloco">
+    <h2><span>1</span>A cada gasto: preencha o formulário no mesmo dia</h2>
+    <table>
+      <tr><td>Data</td><td>O dia do gasto (o que está no recibo).</td></tr>
+      <tr><td>Valor</td><td>Exatamente o que passou no cartão, só o número: <code>48,90</code>. <span class="nao">Não</span> escreva texto junto.</td></tr>
+      <tr><td>Despesa</td><td>O tipo de gasto da lista (Alimentação com médicos, Combustível, Estacionamento, Hospedagem…).</td></tr>
+      <tr><td>Pagamento</td><td><strong>Cartão</strong> = cartão da empresa · <strong>Reembolso</strong> = pagou do próprio bolso.</td></tr>
+      <tr><td>Descrição</td><td>O que foi e para quê, curto: "almoço pós-procedimento".</td></tr>
+      <tr><td>Médico / Paciente / Cidade</td><td>Quando o gasto for de um atendimento.</td></tr>
+      <tr><td>Foto do recibo</td><td>Inteira e legível, com valor e data aparecendo.</td></tr>
+    </table>
+    <div class="dica"><strong>Por que o valor exato?</strong> O sistema casa o seu lançamento com a fatura pelo valor. Um centavo de diferença e o gasto aparece como "sem formulário".</div>
+  </div>
+
+  <div class="bloco">
+    <h2><span>2</span>Cuidados que evitam cobrança do financeiro</h2>
+    <ul>
+      <li><span class="ok">Um lançamento por gasto.</span> Não junte dois recibos, não lance o mesmo gasto duas vezes.</li>
+      <li><strong>Parcelado:</strong> lance uma vez, com o valor total, e diga na descrição em quantas vezes.</li>
+      <li><strong>Conta dividida:</strong> cada um lança só a parte que passou no próprio cartão.</li>
+      <li><strong>Em dólar:</strong> lance o valor em reais da fatura e escreva "USD" na descrição.</li>
+    </ul>
+  </div>
+
+  <div class="bloco">
+    <h2><span>3</span>Recebeu um link do financeiro no WhatsApp?</h2>
+    <ol>
+      <li>Abra no celular. O link é <strong>só seu</strong> e vale pelo prazo da mensagem (normalmente 1 dia). Não repasse.</li>
+      <li>Aparecem os gastos da fatura que ficaram sem formulário. Em cada um: escolha a <strong>categoria</strong>, descreva, informe médico/paciente/cidade se tiver.</li>
+      <li>Toque <strong>Tirar foto do comprovante</strong> e salve.</li>
+      <li>O gasto fica <span class="laranja">Enviado, aguardando o financeiro</span> até ser conferido; depois aparece <span class="verde">Conferido</span>.</li>
+      <li>Não reconhece o gasto? Marque <strong>"não reconheço este gasto"</strong> e explique.</li>
+      <li>Apareceu <strong>"Precisa corrigir"</strong> com o motivo do financeiro? Corrija o que foi pedido no mesmo link e salve de novo.</li>
+    </ol>
+    <div class="dica">O link venceu? Peça outro ao financeiro: o que você já respondeu continua salvo.</div>
+  </div>
+</body>
+</html>

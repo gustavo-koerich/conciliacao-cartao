@@ -1,0 +1,178 @@
+{% load conciliacao_extras %}
+<div id="resultado"
+     {% if imp.status == "PROCESSANDO" %}hx-get="{% url 'conciliacao:fatura_parcial' imp.pk %}" hx-trigger="every 2s" hx-swap="outerHTML"{% endif %}>
+{% if imp.status == "PROCESSANDO" %}
+  <section class="cartao">
+    <h1 class="titulo">Lendo a fatura…</h1>
+    <p class="secundario">{{ imp.arquivo_nome_original }} · {{ r.progresso.etapa|default:"na fila" }}</p>
+    <progress max="{{ r.progresso.total|default:1 }}" value="{{ r.progresso.feito|default:0 }}"></progress>
+    <p class="secundario">{{ r.progresso.feito|default:0 }} de {{ r.progresso.total|default:1 }} etapas. Pode sair desta tela: a leitura continua.</p>
+  </section>
+{% elif r.erro %}
+  <section class="cartao alerta">
+    <h1 class="titulo">Não foi possível ler a fatura</h1>
+    <p>{{ r.erro }}</p>
+    <p class="secundario">{{ imp.arquivo_nome_original }}</p>
+    {% if pode_informar %}
+    <p>O problema está no <strong>resumo da fatura</strong> (período, fechamento, vencimento ou total) — por exemplo, um "O" lido como "0".
+      Os lançamentos ainda não foram carregados.</p>
+    <p><strong>Esse erro é relevante?</strong></p>
+    <div class="duas-opcoes">
+      <form method="post" action="{% url 'conciliacao:fatura_cabecalho' imp.pk %}" class="opcao">
+        {% csrf_token %}
+        <strong>Não é relevante — conferir os dados e seguir</strong>
+        <p class="secundario pequeno">Confira com a fatura impressa e corrija o que estiver errado. A leitura dos lançamentos recomeça com estes dados
+          e os totais continuam sendo conferidos ao centavo. Fica registrado quem informou.</p>
+        {% for c in campos_cabecalho %}
+        <label>{{ c.rotulo }}{% if not c.lido %} <span class="pill st-ressalva">não lido</span>{% endif %}
+          <input type="{{ c.tipo }}" name="{{ c.nome }}" value="{{ c.valor }}" required{% if c.tipo == "text" %} inputmode="decimal" placeholder="ex.: 302050,48"{% endif %}></label>
+        {% endfor %}
+        <button class="btn" type="submit">Seguir com estes dados</button>
+      </form>
+      <div class="opcao">
+        <strong>É relevante — não carregar</strong>
+        <p class="secundario pequeno">Nada é carregado. Mande o relatório abaixo para o suporte: ele traz o texto exatamente como foi lido.</p>
+        <a class="btn secundario" href="#suporte">Ver o relatório para o suporte</a>
+      </div>
+    </div>
+    {% else %}
+    <p>Nada foi carregado. Confira se é o arquivo certo do banco escolhido; se for, mande o relatório abaixo para o suporte.</p>
+    {% endif %}
+  </section>
+  {% include "conciliacao/_fatura_suporte.html" %}
+{% else %}
+  {% if pode_ignorar %}
+  <section class="cartao alerta">
+    <h2 class="subtitulo">A leitura terminou, mas os totais não fecharam</h2>
+    <p>Diferença entre a soma lida e o total impresso: <strong>{{ r.diferenca_geral|moeda }}</strong>
+      ({{ r.portadores_fechados }} de {{ r.portadores }} portadores fecharam). Os detalhes estão abaixo.</p>
+    <p><strong>Essa diferença é relevante?</strong></p>
+    <div class="duas-opcoes">
+      <form method="post" action="{% url 'conciliacao:fatura_ignorar' imp.pk %}" class="opcao">
+        {% csrf_token %}
+        <strong>Não é relevante — seguir com o carregamento</strong>
+        <p class="secundario pequeno">A fatura entra em uso assim mesmo e a conciliação é feita. Fica registrado quem decidiu, quando e o motivo.</p>
+        <label>Motivo <input type="text" name="justificativa" required minlength="5" maxlength="500" placeholder="ex.: diferença de centavos no arredondamento do IOF"></label>
+        <button class="btn" type="submit">Ignorar a diferença e seguir</button>
+      </form>
+      <div class="opcao">
+        <strong>É relevante — não carregar</strong>
+        <p class="secundario pequeno">A fatura fica fora de uso. Mande o relatório abaixo para o suporte.</p>
+        <a class="btn secundario" href="#suporte">Ver o relatório para o suporte</a>
+      </div>
+    </div>
+  </section>
+  {% endif %}
+  {% if pode_usar %}
+  <section class="cartao aviso">
+    <strong>Já existe a versão {{ r.versao_ativa }} em uso para {{ imp.competencia }}.</strong>
+    Esta versão nova só entra no lugar dela se você confirmar.
+    <form method="post" action="{% url 'conciliacao:fatura_usar' imp.pk %}" class="inline">{% csrf_token %}
+      <button class="btn" type="submit">Usar esta versão</button></form>
+  </section>
+  {% endif %}
+  {% if r.divergencia_aceita %}
+  <section class="cartao aviso">
+    Em uso com diferença de {{ r.divergencia_aceita.diferenca|moeda }}, aceita por {{ r.divergencia_aceita.usuario|default:"—" }}:
+    “{{ r.divergencia_aceita.justificativa }}”.
+  </section>
+  {% endif %}
+  {% if r.cabecalho_informado %}
+  <section class="cartao aviso">
+    Resumo da fatura informado por {{ r.cabecalho_informado.usuario|default:"—" }} porque a leitura falhou ({{ r.cabecalho_informado.erro_original }}).
+  </section>
+  {% endif %}
+  <section class="cartao">
+    <div class="linha-titulo">
+      <h1 class="titulo">Fatura {{ imp.competencia }} · versão {{ imp.versao }}</h1>
+      {% if imp.status == "ERRO" %}<span class="pill st-semform">ERRO NA LEITURA: não entrou em uso</span>
+      {% elif imp.ativo %}<span class="pill st-ok">em uso</span>
+      {% else %}<span class="pill st-info">aguardando confirmação (em uso: v{{ r.versao_ativa }})</span>{% endif %}
+      <form method="post" action="{% url 'conciliacao:fatura_reler' imp.pk %}" class="inline" title="Lê o mesmo arquivo de novo com a versão atual do leitor (útil depois de uma correção no sistema). Cria uma versão nova; a que está em uso só muda se você confirmar.">{% csrf_token %}<button class="btn secundario pequeno-btn" type="submit">Ler de novo</button></form>
+    </div>
+    <div class="indicadores">
+      <div><span class="rotulo">Total da fatura</span><span class="numero">{{ r.total_fatura|moeda }}</span></div>
+      <div><span class="rotulo">Soma lida</span><span class="numero">{{ r.soma_lida|moeda }}</span></div>
+      <div><span class="rotulo">Portadores que fecharam</span><span class="numero">{{ r.portadores_fechados }} de {{ r.portadores }}</span></div>
+      <div><span class="rotulo">Encargos da conta</span><span class="numero">{{ r.encargos_conta|moeda }}</span></div>
+      <div><span class="rotulo">Lançamentos</span><span class="numero">{{ r.lancamentos }}</span></div>
+      <div><span class="rotulo">Leitura</span><span class="numero">{{ imp.get_metodo_leitura_display }}</span></div>
+    </div>
+    <p class="secundario">Período {{ imp.competencia.periodo_ini|date:"d/m/Y" }} a {{ imp.competencia.periodo_fim|date:"d/m/Y" }} ·
+      fechamento {{ imp.competencia.fechamento|date:"d/m/Y" }}{% if r.fechamento_estimado %} (estimado pela última compra: o arquivo do banco não informa){% endif %} · vencimento {{ imp.competencia.vencimento|date:"d/m/Y" }} ·
+      saldo anterior {{ r.saldo_anterior|moeda }} · pagamentos {{ r.pagamentos|moeda }} ·
+      enviada por {{ imp.usuario|default:"—" }} de <span class="mono">{{ imp.ip|default:"—" }}</span></p>
+  </section>
+
+  {% if com_erro or r.erros %}
+  <section class="cartao alerta">
+    <h2 class="subtitulo">Seções com erro na leitura</h2>
+    <ul>
+      {% for s in com_erro %}<li>{{ s.cartao.final|default:"Conta" }} {{ s.nome_portador }}: diferença {{ s.diferenca|moeda }} (pág. {{ s.pagina_ini }}{% if s.pagina_fim != s.pagina_ini %}–{{ s.pagina_fim }}{% endif %})</li>{% endfor %}
+      {% for e in r.erros %}<li>{{ e }}</li>{% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  {% if r.cartoes_novos %}
+  <section class="cartao aviso">
+    <strong>Cartões não cadastrados:</strong> {{ r.cartoes_novos|join:", " }}. Foram criados como pendentes; complete o cadastro no admin (representante e escopo).
+  </section>
+  {% endif %}
+
+  <section class="cartao">
+    <h2 class="subtitulo">Conferência por seção</h2>
+    <div class="tabela">
+      <table>
+        <thead><tr><th>Cartão</th><th>Portador na fatura</th><th>Representante</th><th class="num">Total impresso</th><th class="num">Soma lida</th><th class="num">Diferença</th><th>Páginas</th><th>Situação</th></tr></thead>
+        <tbody>
+        {% for s in secoes %}
+          <tr{% if secao_aberta and secao_aberta.pk == s.pk %} class="aberta"{% endif %}>
+            <td class="mono">{{ s.cartao.final|default:"—" }}</td>
+            <td><a href="?secao={{ s.pk }}#lancamentos">{{ s.nome_portador }}</a></td>
+            <td>{% if s.cartao %}{{ s.cartao.representante|default:"" }}{% if s.cartao.pendente_cadastro %} <span class="pill st-ressalva">cadastro pendente</span>{% endif %}{% else %}<span class="secundario">encargos e pagamentos</span>{% endif %}</td>
+            <td class="num">{{ s.total_declarado|moeda }}</td>
+            <td class="num">{{ s.total_lido|moeda }}</td>
+            <td class="num">{{ s.diferenca|moeda }}</td>
+            <td>{{ s.pagina_ini }}{% if s.pagina_fim != s.pagina_ini %}–{{ s.pagina_fim }}{% endif %}</td>
+            <td>{% if s.status == "OK" %}<span class="pill st-ok">fechou</span>{% else %}<span class="pill st-semform">erro na leitura</span>{% endif %}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  {% if lancamentos is not None %}
+  <section class="cartao" id="lancamentos">
+    <h2 class="subtitulo">Lançamentos · {{ secao_aberta.nome_portador }}</h2>
+    <div class="tabela">
+      <table>
+        <thead><tr><th>Data</th><th>Descrição</th><th>Cidade</th><th>Parcela</th><th>Natureza</th><th class="num">Valor</th><th>Moeda</th><th>Pág.</th></tr></thead>
+        <tbody>
+        {% for l in lancamentos %}
+          <tr>
+            <td>{{ l.data|date:"d/m/Y" }}</td><td>{{ l.descricao }}</td><td>{{ l.cidade }}</td>
+            <td>{% if l.parcela_total %}{{ l.parcela_atual }}/{{ l.parcela_total }}{% endif %}</td>
+            <td>{{ l.get_natureza_display }}</td>
+            <td class="num">{{ l.valor|moeda }}</td>
+            <td>{% if l.moeda != "BRL" %}US$ {{ l.valor_moeda|default:"?" }} · cotação {{ l.cotacao|default:"?" }}{% endif %}</td>
+            <td>{{ l.pagina }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% endif %}
+
+  {% if r.problemas %}
+  <section class="cartao">
+    <details><summary>Linhas que não viraram lançamento ({{ r.problemas|length }})</summary>
+      <ul class="mono pequeno">{% for p in r.problemas %}<li>{{ p }}</li>{% endfor %}</ul>
+    </details>
+  </section>
+  {% endif %}
+  {% if imp.status == "ERRO" %}{% include "conciliacao/_fatura_suporte.html" %}{% endif %}
+{% endif %}
+</div>

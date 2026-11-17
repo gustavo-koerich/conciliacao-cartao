@@ -1,0 +1,759 @@
+{% extends "conciliacao/base.html" %}
+{% load static %}
+{% block titulo %}Gastos dos representantes{% endblock %}
+{% block estilo %}<style>
+/* Layout: faixa de filtros fixa no topo; KPIs; gráficos em grade de 12 colunas; tabela de lançamentos ao fim. */
+:root{
+  color-scheme:light;
+  --fundo:#f3f5f9; --cartao:#ffffff; --borda:#d8dde8; --texto:#1c2850; --sec:#4a5470; --mudo:#5d6782; --acao:#0f5f6e;
+  --acao-suave:#e7ebf5; --grade:#e3e7ef; --hover:#eef1f8;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4; --s6:#008300; --s7:#6250d6; --s8:#9aa2a9;
+  --seq-0:#eef4fb; --seq-1:#cde2fb; --seq-2:#9ec5f4; --seq-3:#6da7ec; --seq-4:#3987e5; --seq-5:#256abf; --seq-6:#184f95; --seq-7:#0d366b;
+  --bom:#0ca30c; --critico:#d03b3b;
+  --sans:"Barlow","Segoe UI Variable","Segoe UI",system-ui,sans-serif; --mono:Consolas,"Cascadia Mono",monospace;
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --fundo:#11152a; --cartao:#1a2038; --borda:#2e3756; --texto:#e6eaf6; --sec:#b8c0da; --mudo:#9aa4c2; --acao:#5fc4d6;
+  --acao-suave:#232b4a; --grade:#262e4b; --hover:#232b4a;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#6b747b;
+  --seq-0:#18222c; --seq-1:#104281; --seq-2:#184f95; --seq-3:#1c5cab; --seq-4:#256abf; --seq-5:#3987e5; --seq-6:#6da7ec; --seq-7:#b7d3f6;
+}
+*{box-sizing:border-box}
+
+main{max-width:1480px}
+header.topo{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between;margin-bottom:14px}
+h1{margin:0;font-size:1.55rem;font-weight:700;letter-spacing:-.01em;text-wrap:balance}
+.sub{color:var(--sec);margin:4px 0 0;font-size:.9rem}
+
+/* Filtros */
+.filtros{position:sticky;top:var(--altura-topo,0px);z-index:20;background:color-mix(in srgb,var(--fundo) 92%,transparent);backdrop-filter:blur(6px);
+  padding-block:10px;margin-bottom:6px;border-bottom:1px solid var(--borda)}
+.filtros-linha{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+.campo{display:flex;flex-direction:column;gap:4px;min-width:0}
+.campo>span{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--mudo);font-weight:500}
+.ctl{font:inherit;min-height:40px;border:1px solid var(--borda);border-radius:8px;background:var(--cartao);color:var(--texto);
+  padding:0 12px;display:inline-flex;align-items:center;gap:8px;cursor:pointer}
+.ctl:focus-visible,button:focus-visible{outline:2px solid var(--acao);outline-offset:2px}
+select.ctl{padding-right:28px}
+.seg{display:inline-flex;border:1px solid var(--borda);border-radius:8px;background:var(--cartao);padding:3px;gap:2px;min-height:40px}
+.seg button{border:0;background:transparent;color:var(--sec);font:inherit;font-size:.86rem;padding:0 12px;border-radius:6px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--acao);color:#fff;font-weight:600}
+.lista{position:relative}
+.painel-lista{position:absolute;top:calc(100% + 6px);left:0;width:280px;max-height:380px;overflow:auto;background:var(--cartao);
+  border:1px solid var(--borda);border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,.14);padding:8px;z-index:30}
+.painel-lista input[type=search]{width:100%;font:inherit;min-height:36px;border:1px solid var(--borda);border-radius:6px;
+  background:var(--fundo);color:var(--texto);padding:0 8px;margin-bottom:6px}
+.painel-lista label{display:flex;align-items:center;gap:8px;padding:6px 6px;border-radius:6px;cursor:pointer;font-size:.9rem}
+.painel-lista label:hover{background:var(--hover)}
+.painel-lista .acoes-lista{display:flex;gap:6px;margin-bottom:6px}
+.painel-lista .acoes-lista button{flex:1;font:inherit;font-size:.8rem;min-height:30px;border:1px solid var(--borda);border-radius:6px;background:var(--fundo);color:var(--texto);cursor:pointer}
+.pontinho{width:10px;height:10px;border-radius:3px;flex:none}
+.atalhos{display:flex;gap:4px;flex-wrap:wrap}
+.atalhos button{font:inherit;font-size:.8rem;min-height:40px;padding:0 10px;border:1px solid var(--borda);border-radius:8px;background:var(--cartao);color:var(--sec);cursor:pointer}
+.atalhos button[aria-pressed="true"]{border-color:var(--acao);color:var(--texto);font-weight:600;background:var(--acao-suave)}
+.limpar{font:inherit;min-height:40px;border:0;background:none;color:var(--acao);cursor:pointer;text-decoration:underline;padding:0 6px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;min-height:0}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:.8rem;border:1px solid var(--borda);background:var(--cartao);border-radius:999px;padding:3px 4px 3px 10px}
+.chip button{border:0;background:none;color:var(--mudo);cursor:pointer;font-size:1rem;line-height:1;width:22px;height:22px;border-radius:50%}
+.chip button:hover{background:var(--hover);color:var(--texto)}
+
+/* Cartões e grade */
+.grade{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:14px}
+.analise .cartao{background:var(--cartao);border:1px solid var(--borda);border-radius:12px;padding:16px 18px;min-width:0}
+.c12{grid-column:span 12}.c8{grid-column:span 8}.c7{grid-column:span 7}.c6{grid-column:span 6}.c5{grid-column:span 5}.c4{grid-column:span 4}
+@media (max-width:1100px){.c8,.c7,.c6,.c5,.c4{grid-column:span 12}}
+.cab-cartao{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:baseline;justify-content:space-between;margin-bottom:6px}
+h2{margin:0;font-size:1rem;font-weight:600}
+.dica{color:var(--mudo);font-size:.8rem}
+.grafico{width:100%;height:340px}
+.grafico.alto{height:460px}
+.grafico.baixo{height:280px}
+
+/* KPIs */
+.kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:14px;margin:14px 0}
+@media (max-width:1100px){.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:600px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.kpi{background:var(--cartao);border:1px solid var(--borda);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.kpi .rot{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--mudo);font-weight:500}
+.kpi .num{font-family:var(--mono);font-size:1.45rem;font-weight:500;font-variant-numeric:tabular-nums;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi .det{font-size:.8rem;color:var(--sec)}
+.kpi.destaque{background:linear-gradient(135deg,#178197 0%,#0f5f6e 100%);border-color:transparent;color:#fff}
+.kpi.destaque .rot,.kpi.destaque .det{color:rgba(255,255,255,.78)}
+.var{font-weight:600;white-space:nowrap}
+.var.sobe::before{content:"▲ "}.var.desce::before{content:"▼ "}
+.var.sobe{color:var(--critico)}.var.desce{color:var(--bom)}
+.kpi.destaque .var{color:#fff}
+
+/* Tabelas */
+.tabela{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.86rem}
+th,td{padding:7px 8px;border-bottom:1px solid var(--grade);text-align:left;vertical-align:middle;white-space:nowrap}
+th{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--mudo);font-weight:500;cursor:pointer;user-select:none;position:sticky;top:0;background:var(--cartao)}
+th.num,td.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+td.quebra{white-space:normal;min-width:160px}
+tr:hover td{background:var(--hover)}
+.barrinha{display:flex;align-items:center;gap:8px}
+.barrinha i{display:block;height:8px;border-radius:0 4px 4px 0;background:var(--s1);min-width:2px}
+.top-lista td:first-child{max-width:170px;overflow:hidden;text-overflow:ellipsis}
+.top-lista .barrinha i{max-width:44px}
+.rodape-tabela{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-top:10px;color:var(--sec);font-size:.85rem}
+.rodape-tabela button,.btn{font:inherit;min-height:40px;border:1px solid var(--borda);border-radius:8px;background:var(--cartao);color:var(--texto);padding:0 14px;cursor:pointer}
+.btn.prim{background:var(--acao);border-color:var(--acao);color:#fff;font-weight:600}
+.busca{font:inherit;min-height:40px;border:1px solid var(--borda);border-radius:8px;background:var(--cartao);color:var(--texto);padding:0 12px;min-width:240px}
+.pill{display:inline-block;font-size:.74rem;padding:2px 8px;border-radius:999px;background:var(--hover);color:var(--sec)}
+.pill.alerta{background:color-mix(in srgb,var(--critico) 14%,transparent);color:var(--critico);font-weight:600}
+.abas{display:inline-flex;gap:2px;border:1px solid var(--borda);border-radius:8px;padding:3px}
+.abas button{border:0;background:transparent;color:var(--sec);font:inherit;font-size:.8rem;padding:6px 10px;border-radius:6px;cursor:pointer}
+.abas button[aria-pressed="true"]{background:var(--acao-suave);color:var(--texto);font-weight:600}
+.qualidade ul{margin:6px 0 0;padding-left:1.1em;color:var(--sec);font-size:.86rem;display:grid;gap:3px}
+.legenda-tabela{font-size:.8rem;color:var(--mudo)}
+.vazio{display:grid;place-items:center;height:100%;color:var(--mudo)}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>{% endblock %}
+{% block conteudo %}
+{% if sem_dados %}
+<section class="cartao">
+  <h1 class="titulo">Ainda não há gastos para analisar</h1>
+  <p>Importe a base geral em <a href="{% url 'conciliacao:analise_lista' %}">Lista geral</a> ou envie as planilhas dos representantes em <a href="{% url 'conciliacao:planilhas' %}">Planilhas</a>.</p>
+</section>
+{% else %}
+<div class="analise">
+  <header class="topo">
+    <div>
+      <h1>Gastos dos representantes</h1>
+      <p class="sub" id="subtitulo"></p>
+      <p class="sub"><a href="{% url 'conciliacao:analise_lista' %}">Ver e exportar a lista geral →</a></p>
+    </div>
+  </header>
+
+  <section class="filtros" aria-label="Filtros">
+    <div class="filtros-linha">
+      <div class="campo lista" id="f-rep"><span>Representante</span>
+        <button type="button" class="ctl" aria-haspopup="true" aria-expanded="false"><b class="rotulo-lista">Todos</b> ▾</button>
+      </div>
+      <div class="campo"><span>De (mês da fatura)</span><input type="text" class="ctl mes-ano" id="f-de" placeholder="MM/AAAA" inputmode="numeric" maxlength="7" aria-describedby="erro-periodo"></div>
+      <div class="campo"><span>Até</span><input type="text" class="ctl mes-ano" id="f-ate" placeholder="MM/AAAA" inputmode="numeric" maxlength="7" aria-describedby="erro-periodo"></div>
+      <div class="campo"><span>Período rápido</span>
+        <div class="atalhos" id="atalhos">
+          <button type="button" data-meses="3">3 meses</button>
+          <button type="button" data-meses="6">6 meses</button>
+          <button type="button" data-meses="12">12 meses</button>
+          <button type="button" data-ano="2026">2026</button>
+          <button type="button" data-ano="2025">2025</button>
+          <button type="button" data-meses="0">Tudo</button>
+        </div>
+      </div>
+      <div class="campo lista" id="f-tipo"><span>Tipo de gasto</span>
+        <button type="button" class="ctl" aria-haspopup="true" aria-expanded="false"><b class="rotulo-lista">Todos</b> ▾</button>
+      </div>
+      <div class="campo"><span>Finalidade</span><select class="ctl" id="f-fin"><option value="">Todas</option></select></div>
+      <div class="campo"><span>Pagamento</span>
+        <div class="seg" id="f-pag" role="group" aria-label="Pagamento">
+          <button type="button" data-v="Cartão" aria-pressed="true" title="Lançamentos da fatura (o valor que vale)">Na fatura</button>
+          <button type="button" data-v="Reembolso" aria-pressed="false" title="Pago pelo representante; não está na fatura">Reembolsado</button>
+          <button type="button" data-v="" aria-pressed="false">Os dois</button>
+        </div>
+      </div>
+      <button type="button" class="limpar" id="limpar">Limpar filtros</button>
+    </div>
+    <p class="aviso-erro" id="erro-periodo" role="alert" hidden></p>
+    <div class="chips" id="chips"></div>
+  </section>
+
+  <section class="kpis" id="kpis" aria-label="Indicadores"></section>
+
+  <div class="grade">
+    <section class="cartao c12">
+      <div class="cab-cartao">
+        <h2>Evolução mensal</h2>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <span class="dica">Clique em um mês para filtrar só ele</span>
+          <div class="abas" id="abas-mensal" role="group" aria-label="Abrir por">
+            <button type="button" data-v="tipo" aria-pressed="true">Por tipo de gasto</button>
+            <button type="button" data-v="rep" aria-pressed="false">Por representante</button>
+          </div>
+        </div>
+      </div>
+      <div id="g-mensal" class="grafico" role="img" aria-label="Gasto por mês"></div>
+    </section>
+
+    <section class="cartao c6">
+      <div class="cab-cartao"><h2>Ranking de representantes</h2><span class="dica">Clique para filtrar · barra = total, número à direita = média por mês</span></div>
+      <div id="g-ranking" class="grafico alto" role="img" aria-label="Gasto por representante"></div>
+    </section>
+    <section class="cartao c6">
+      <div class="cab-cartao"><h2>Por tipo de gasto</h2><span class="dica">Clique para filtrar</span></div>
+      <div id="g-tipos" class="grafico alto" role="img" aria-label="Gasto por tipo"></div>
+    </section>
+
+    <section class="cartao c12">
+      <div class="cab-cartao"><h2>Mapa representante × mês</h2><span class="dica">Quanto mais escuro, maior o gasto · célula vazia = nenhum lançamento · clique para abrir</span></div>
+      <div id="g-mapa" class="grafico alto" role="img" aria-label="Mapa de calor de gastos por representante e mês"></div>
+    </section>
+
+    <section class="cartao c7">
+      <div class="cab-cartao"><h2>Perfil de gasto de cada representante</h2><span class="dica">% do total de cada um, por tipo</span></div>
+      <div id="g-perfil" class="grafico alto" role="img" aria-label="Composição percentual por representante"></div>
+    </section>
+    <section class="cartao c5">
+      <div class="cab-cartao"><h2>Finalidade e forma de pagamento</h2></div>
+      <div id="g-finalidade" class="grafico baixo" role="img" aria-label="Gasto por finalidade"></div>
+      <div id="g-pagamento" style="height:150px" role="img" aria-label="Cartão e reembolso"></div>
+    </section>
+
+    <section class="cartao c4">
+      <div class="cab-cartao"><h2>O que mais aparece na descrição</h2><span class="dica">Texto informado no formulário</span></div>
+      <div class="tabela"><table class="top-lista" id="t-estab"></table></div>
+    </section>
+    <section class="cartao c4">
+      <div class="cab-cartao"><h2>Cidades</h2></div>
+      <div class="tabela"><table class="top-lista" id="t-cidade"></table></div>
+    </section>
+    <section class="cartao c4">
+      <div class="cab-cartao"><h2>Médicos</h2><span class="dica">Gastos vinculados a médico</span></div>
+      <div class="tabela"><table class="top-lista" id="t-medico"></table></div>
+    </section>
+
+    <section class="cartao c12">
+      <div class="cab-cartao">
+        <h2>Lançamentos</h2>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <label class="dica"><input type="checkbox" id="so-atipicos"> só valores atípicos</label>
+          <input type="search" class="busca" id="busca" placeholder="Buscar estabelecimento, cidade, médico…" aria-label="Buscar nos lançamentos">
+          <button type="button" class="btn prim" id="exportar">Exportar CSV</button>
+        </div>
+      </div>
+      <p class="legenda-tabela"><span class="pill alerta">atípico</span> = valor acima de 3× a mediana daquele tipo de gasto (percentil 98 do tipo, no mínimo).</p>
+      <div class="tabela"><table id="t-lanc"></table></div>
+      <div class="rodape-tabela"><span id="info-pag"></span><span><button type="button" id="ant">← Anterior</button> <button type="button" id="prox">Próxima →</button></span></div>
+    </section>
+
+    <section class="cartao c12 qualidade">
+      <h2>Qualidade dos dados</h2>
+      <ul id="qualidade"></ul>
+    </section>
+  </div></div>
+{{ dados|json_script:"dados-analise" }}
+<script src="{% static 'conciliacao/echarts.min.js' %}"></script>
+<script>
+"use strict";
+const DADOS = JSON.parse(document.getElementById("dados-analise").textContent);
+// ---------- dados ----------
+const COL = Object.fromEntries(DADOS.colunas.map((c, i) => [c, i]));
+const LINHAS = DADOS.linhas.map((r, i) => ({
+  // mes = mês da FATURA (competência); valor chega em centavos inteiros e vira reais só aqui
+  id: i, rep: r[COL.rep], data: r[COL.data], mes: r[COL.mes], tipo: r[COL.tipo], evento: r[COL.evento],
+  fin: r[COL.finalidade], pag: r[COL.pagamento], valor: r[COL.centavos] / 100, cidade: r[COL.cidade],
+  desc: r[COL.descricao], medico: r[COL.medico], original: r[COL.tipo_original], fonte: r[COL.fonte]
+}));
+const MES_ATUAL = DADOS.mes_atual;
+const MESES_TODOS = [...new Set([...LINHAS.map(l => l.mes), MES_ATUAL])].sort();
+// soma k meses a "AAAA-MM"
+const somarMes = (m, k) => { const t = +m.slice(0, 4) * 12 + (+m.slice(5, 7) - 1) + k; return `${Math.floor(t / 12)}-${String(t % 12 + 1).padStart(2, "0")}`; };
+const REPS_TODOS = [...new Set(LINHAS.map(l => l.rep))].sort((a, b) => a.localeCompare(b, "pt-BR"));
+const TOTAL_TIPO = {};
+LINHAS.forEach(l => TOTAL_TIPO[l.tipo] = (TOTAL_TIPO[l.tipo] || 0) + l.valor);
+const TIPOS_TODOS = Object.keys(TOTAL_TIPO).sort((a, b) => TOTAL_TIPO[b] - TOTAL_TIPO[a]);
+const FINS = [...new Set(LINHAS.map(l => l.fin))].sort();
+
+// Cor fixa por categoria (segue a entidade, nunca a posição). "Outros" fica em cinza.
+const GRUPOS_TIPO = DADOS.categorias;
+const tipoGrupo = t => GRUPOS_TIPO.includes(t) ? t : "Outros";
+
+// Atípico: acima de max(3× mediana do tipo, percentil 98 do tipo)
+const LIMITE_ATIPICO = {};
+for (const t of TIPOS_TODOS) {
+  const v = LINHAS.filter(l => l.tipo === t).map(l => l.valor).sort((a, b) => a - b);
+  const q = p => v[Math.min(v.length - 1, Math.floor(p * (v.length - 1)))];
+  LIMITE_ATIPICO[t] = Math.max(3 * q(.5), q(.98));
+}
+LINHAS.forEach(l => l.atipico = l.valor > LIMITE_ATIPICO[l.tipo]);
+
+// ---------- formatação ----------
+const brl = new Intl.NumberFormat("pt-BR", {style: "currency", currency: "BRL"});
+const brl0 = new Intl.NumberFormat("pt-BR", {style: "currency", currency: "BRL", maximumFractionDigits: 0});
+const num = new Intl.NumberFormat("pt-BR");
+const MES_NOME = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+const rotMes = m => `${MES_NOME[+m.slice(5, 7) - 1]}/${m.slice(2, 4)}`;
+const compacto = v => v >= 1e6 ? `R$ ${(v / 1e6).toLocaleString("pt-BR", {maximumFractionDigits: 1})} mi`
+  : v >= 1e3 ? `R$ ${(v / 1e3).toLocaleString("pt-BR", {maximumFractionDigits: 1})} mil` : brl0.format(v);
+// MM/AAAA <-> "AAAA-MM" e a mesma validação da lista geral (periodo.py): mês 01–12, ano com 4 dígitos, De ≤ Até
+const paraTexto = m => `${m.slice(5, 7)}/${m.slice(0, 4)}`;
+const paraIso = t => `${t.slice(3, 7)}-${t.slice(0, 2)}`;
+function validarPeriodo(de, ate) {
+  for (const [rot, t] of [["De", de], ["Até", ate]]) {
+    const m = /^(\d{2})\/(\d{4})$/.exec((t || "").trim());
+    if (!m) return `${rot}: use o formato MM/AAAA, por exemplo 06/2026.`;
+    if (+m[1] < 1 || +m[1] > 12) return `${rot}: o mês vai de 01 a 12 (veio ${m[1]}).`;
+    if (+m[2] < 2000 || +m[2] > 2100) return `${rot}: ano inválido (${m[2]}).`;
+  }
+  return paraIso(de.trim()) > paraIso(ate.trim()) ? `O mês “De” (${de}) não pode ser depois do mês “Até” (${ate}).` : "";
+}
+const esc = s =>String(s ?? "").replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+
+// ---------- estado ----------
+// Padrão: mês atual nos dois campos e só o que está na fatura (o reembolso aparece à parte, no indicador próprio)
+const estado = {reps: new Set(), tipos: new Set(), de: MES_ATUAL, ate: MES_ATUAL, fin: "", pag: "Cartão",
+                abaMensal: "tipo", busca: "", soAtipicos: false, pagina: 0, ordem: {col: "data", dir: -1}};
+
+function filtrar(ignorarPeriodo = false) {
+  return LINHAS.filter(l =>
+    (estado.reps.size === 0 || estado.reps.has(l.rep)) &&
+    (estado.tipos.size === 0 || estado.tipos.has(l.tipo)) &&
+    (ignorarPeriodo || (l.mes >= estado.de && l.mes <= estado.ate)) &&
+    (!estado.fin || l.fin === estado.fin) && (!estado.pag || l.pag === estado.pag));
+}
+// todos os meses do intervalo digitado (pode atravessar anos), mesmo sem gasto
+function mesesEntre(de, ate) { const ms = []; for (let m = de; m <= ate && ms.length < 600; m = somarMes(m, 1)) ms.push(m); return ms; }
+function somar(linhas, chave) {
+  const s = new Map();
+  for (const l of linhas) s.set(chave(l), (s.get(chave(l)) || 0) + l.valor);
+  return s;
+}
+
+// ---------- cores do tema ----------
+let C = {};
+function lerCores() {
+  const st = getComputedStyle(document.documentElement);
+  const v = n => st.getPropertyValue(n).trim();
+  C = {texto: v("--texto"), sec: v("--sec"), mudo: v("--mudo"), grade: v("--grade"), cartao: v("--cartao"), borda: v("--borda"),
+       acao: v("--acao"), serie: [1, 2, 3, 4, 5, 6, 7, 8].map(i => v(`--s${i}`)), seq: [0, 1, 2, 3, 4, 5, 6, 7].map(i => v(`--seq-${i}`))};
+  C.tipo = {}; let i = 0;
+  GRUPOS_TIPO.forEach(t => C.tipo[t] = t === "Outros" ? C.serie[7] : C.serie[i++]);
+}
+const corTipo = t => C.tipo[tipoGrupo(t)];
+
+// ---------- gráficos ----------
+const graficos = {};
+function grafico(id) {
+  if (!graficos[id]) {
+    graficos[id] = echarts.init(document.getElementById(id), null, {renderer: "svg"});
+    new ResizeObserver(() => graficos[id].resize()).observe(document.getElementById(id));
+  }
+  return graficos[id];
+}
+const base = () => ({
+  textStyle: {fontFamily: "IBM Plex Sans, system-ui, sans-serif", color: C.sec},
+  animationDuration: 350,
+  tooltip: {backgroundColor: C.cartao, borderColor: C.borda, borderWidth: 1, textStyle: {color: C.texto, fontSize: 12},
+            extraCssText: "box-shadow:0 8px 24px rgba(0,0,0,.15);border-radius:8px;"},
+});
+const eixoValor = extra => Object.assign({type: "value", axisLabel: {color: C.mudo, formatter: v => compacto(v)},
+  splitLine: {lineStyle: {color: C.grade}}, axisLine: {show: false}, axisTick: {show: false}}, extra);
+const eixoCat = (dados, extra) => Object.assign({type: "category", data: dados, axisLine: {lineStyle: {color: C.borda}},
+  axisTick: {show: false}, axisLabel: {color: C.sec}}, extra);
+
+function desenharMensal(linhas) {
+  const meses = mesesEntre(estado.de, estado.ate);
+  const porEntidade = estado.abaMensal === "tipo";
+  let grupos, chave;
+  if (porEntidade) { grupos = GRUPOS_TIPO; chave = l => tipoGrupo(l.tipo); }
+  else {
+    const tot = somar(linhas, l => l.rep);
+    const top = [...tot.entries()].sort((a, b) => b[1] - a[1]).slice(0, 7).map(e => e[0]);
+    grupos = [...top.sort((a, b) => a.localeCompare(b, "pt-BR")), "Demais representantes"];
+    chave = l => top.includes(l.rep) ? l.rep : "Demais representantes";
+  }
+  const mapa = new Map();
+  for (const l of linhas) { const k = chave(l) + "|" + l.mes; mapa.set(k, (mapa.get(k) || 0) + l.valor); }
+  const corRep = {}; grupos.forEach((g, i) => corRep[g] = C.serie[i]);
+  const series = grupos.map(g => ({
+    name: g, type: "bar", stack: "total", barMaxWidth: 44, emphasis: {focus: "series"},
+    itemStyle: {color: porEntidade ? C.tipo[g] : corRep[g], borderColor: C.cartao, borderWidth: 1},
+    data: meses.map(m => +(mapa.get(g + "|" + m) || 0).toFixed(2)),
+  })).filter(s => s.data.some(v => v > 0));
+  // arredonda só o topo da pilha
+  meses.forEach((_, i) => { for (let s = series.length - 1; s >= 0; s--) if (series[s].data[i] > 0) {
+    series[s].data[i] = {value: series[s].data[i], itemStyle: {borderRadius: [4, 4, 0, 0]}}; break; } });
+  const totais = meses.map(m => linhas.filter(l => l.mes === m).reduce((a, l) => a + l.valor, 0));
+  const media = totais.reduce((a, b) => a + b, 0) / (totais.filter(t => t > 0).length || 1);
+  const g = grafico("g-mensal");
+  g.setOption(Object.assign(base(), {
+    legend: {top: 0, left: 0, icon: "roundRect", itemWidth: 10, itemHeight: 10, textStyle: {color: C.sec}, data: series.map(x => x.name)},
+    grid: {top: 44, left: 8, right: 96, bottom: 8, containLabel: true},
+    xAxis: eixoCat(meses.map(rotMes)),
+    yAxis: eixoValor(),
+    tooltip: Object.assign(base().tooltip, {trigger: "axis", axisPointer: {type: "shadow", shadowStyle: {color: "rgba(127,127,127,.08)"}},
+      formatter: ps => {
+        const i = ps[0].dataIndex; const itens = ps.filter(p => (p.value?.value ?? p.value) > 0)
+          .sort((a, b) => (b.value?.value ?? b.value) - (a.value?.value ?? a.value));
+        return `<b>${rotMes(meses[i])}</b> · ${brl.format(totais[i])}<br>` + itens.map(p =>
+          `${p.marker}${esc(p.seriesName)} <span style="float:right;margin-left:16px;font-family:IBM Plex Mono">${brl.format(p.value?.value ?? p.value)}</span>`).join("<br>");
+      }}),
+    series: [...series, {type: "line", name: "Média do período", data: meses.map(() => +media.toFixed(2)), symbol: "none",
+      lineStyle: {type: "dashed", width: 1.5, color: C.mudo}, tooltip: {show: false}, z: 10,
+      endLabel: {show: true, formatter: () => `média ${compacto(media)}`, color: C.sec, fontSize: 11}}],
+  }), true);
+  g.off("click"); g.on("click", p => { if (p.componentType === "series" && p.seriesType === "bar") { estado.de = estado.ate = meses[p.dataIndex]; atualizar(); } });
+}
+
+function desenharRanking(linhas) {
+  const meses = Math.max(1, new Set(linhas.map(l => l.mes)).size);
+  const tot = [...somar(linhas, l => l.rep).entries()].sort((a, b) => a[1] - b[1]);
+  const g = grafico("g-ranking");
+  if (!tot.length) { g.clear(); return; }
+  const mesesPorRep = {};
+  linhas.forEach(l => (mesesPorRep[l.rep] ||= new Set()).add(l.mes));
+  g.setOption(Object.assign(base(), {
+    grid: {top: 6, left: 8, right: 170, bottom: 4, containLabel: true},
+    xAxis: eixoValor({splitNumber: 4}), yAxis: eixoCat(tot.map(e => e[0])),
+    tooltip: Object.assign(base().tooltip, {trigger: "item", formatter: p => {
+      const r = p.name, n = linhas.filter(l => l.rep === r).length, m = mesesPorRep[r].size;
+      return `<b>${esc(r)}</b><br>Total: ${brl.format(p.value)}<br>${num.format(n)} lançamentos em ${m} ${m === 1 ? "mês" : "meses"}<br>Média por mês: ${brl.format(p.value / m)}<br>${(100 * p.value / tot.reduce((a, e) => a + e[1], 0)).toFixed(1).replace(".", ",")}% do total`;
+    }}),
+    series: [{type: "bar", barMaxWidth: 18, data: tot.map(([r, v]) => ({value: +v.toFixed(2), itemStyle: {
+      color: estado.reps.size && !estado.reps.has(r) ? C.grade : C.serie[0], borderRadius: [0, 4, 4, 0]}})),
+      label: {show: true, position: "right", color: C.sec, fontSize: 11, fontFamily: "IBM Plex Mono",
+        formatter: p => `${compacto(p.value)} · ${compacto(p.value / mesesPorRep[p.name].size)}/mês`}}],
+  }), true);
+  g.off("click"); g.on("click", p => { alternar(estado.reps, p.name); atualizar(); });
+}
+
+function desenharTipos(linhas) {
+  const tot = [...somar(linhas, l => l.tipo).entries()].sort((a, b) => a[1] - b[1]);
+  const soma = tot.reduce((a, e) => a + e[1], 0);
+  const g = grafico("g-tipos");
+  if (!tot.length) { g.clear(); return; }
+  g.setOption(Object.assign(base(), {
+    grid: {top: 6, left: 8, right: 130, bottom: 4, containLabel: true},
+    xAxis: eixoValor({splitNumber: 4}), yAxis: eixoCat(tot.map(e => e[0])),
+    tooltip: Object.assign(base().tooltip, {trigger: "item", formatter: p => {
+      const n = linhas.filter(l => l.tipo === p.name);
+      const orig = [...somar(n, l => l.original || "(vazio)").entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
+      return `<b>${esc(p.name)}</b><br>${brl.format(p.value)} · ${(100 * p.value / soma).toFixed(1).replace(".", ",")}%<br>${num.format(n.length)} lançamentos · ticket médio ${brl.format(p.value / n.length)}` +
+        (p.name === "Outros" ? "<br><br><i>Inclui (como veio):</i><br>" + orig.map(([o, v]) => `${esc(o)}: ${brl0.format(v)}`).join("<br>") : "");
+    }}),
+    series: [{type: "bar", barMaxWidth: 18, data: tot.map(([t, v]) => ({value: +v.toFixed(2), itemStyle: {
+      color: estado.tipos.size && !estado.tipos.has(t) ? C.grade : corTipo(t), borderRadius: [0, 4, 4, 0]}})),
+      label: {show: true, position: "right", color: C.sec, fontSize: 11, fontFamily: "IBM Plex Mono",
+        formatter: p => `${compacto(p.value)} · ${(100 * p.value / soma).toFixed(0)}%`}}],
+  }), true);
+  g.off("click"); g.on("click", p => { alternar(estado.tipos, p.name); atualizar(); });
+}
+
+function desenharMapa() {
+  // O mapa ignora o filtro de representante para comparar todos; respeita período, tipo, finalidade e pagamento.
+  const linhas = LINHAS.filter(l => (estado.tipos.size === 0 || estado.tipos.has(l.tipo)) && l.mes >= estado.de && l.mes <= estado.ate
+    && (!estado.fin || l.fin === estado.fin) && (!estado.pag || l.pag === estado.pag));
+  const meses = mesesEntre(estado.de, estado.ate);
+  const tot = somar(linhas, l => l.rep);
+  const reps = [...tot.keys()].sort((a, b) => tot.get(a) - tot.get(b));
+  const celulas = somar(linhas, l => l.rep + "|" + l.mes);
+  const dados = [];
+  reps.forEach((r, y) => meses.forEach((m, x) => { const v = celulas.get(r + "|" + m); if (v) dados.push([x, y, +v.toFixed(2)]); }));
+  const max = Math.max(1, ...dados.map(d => d[2]));
+  const g = grafico("g-mapa");
+  g.setOption(Object.assign(base(), {
+    grid: {top: 8, left: 8, right: 16, bottom: 56, containLabel: true},
+    xAxis: eixoCat(meses.map(rotMes), {splitArea: {show: false}}),
+    yAxis: eixoCat(reps, {axisLabel: {color: C.sec, formatter: r => estado.reps.size && !estado.reps.has(r) ? `{f|${r}}` : `{a|${r}}`,
+      rich: {a: {color: C.texto, fontWeight: 600}, f: {color: C.mudo}}}}),
+    visualMap: {min: 0, max, calculable: false, orient: "horizontal", left: "center", bottom: 4, itemWidth: 12, itemHeight: 220,
+      inRange: {color: C.seq.slice(1)}, text: [compacto(max), "R$ 0"], textStyle: {color: C.sec, fontSize: 11}},
+    tooltip: Object.assign(base().tooltip, {formatter: p => {
+      const r = reps[p.value[1]], m = meses[p.value[0]];
+      const n = linhas.filter(l => l.rep === r && l.mes === m);
+      const pt = [...somar(n, l => l.tipo).entries()].sort((a, b) => b[1] - a[1]).slice(0, 4);
+      return `<b>${esc(r)}</b> · ${rotMes(m)}<br>${brl.format(p.value[2])} em ${n.length} lançamentos<br>` +
+        pt.map(([t, v]) => `<span style="color:${corTipo(t)}">■</span> ${esc(t)}: ${brl0.format(v)}`).join("<br>");
+    }}),
+    series: [{type: "heatmap", data: dados, itemStyle: {borderColor: C.cartao, borderWidth: 2, borderRadius: 3},
+      emphasis: {itemStyle: {borderColor: C.texto, borderWidth: 1}},
+      label: {show: meses.length <= 8, color: "#fff", fontSize: 10, formatter: p => compacto(p.value[2]).replace("R$ ", "")}}],
+  }), true);
+  g.off("click"); g.on("click", p => { estado.reps = new Set([reps[p.value[1]]]); estado.de = estado.ate = meses[p.value[0]]; atualizar(); });
+}
+
+function desenharPerfil(linhas) {
+  const tot = somar(linhas, l => l.rep);
+  const reps = [...tot.keys()].sort((a, b) => tot.get(a) - tot.get(b));
+  const cel = somar(linhas, l => l.rep + "|" + tipoGrupo(l.tipo));
+  const g = grafico("g-perfil");
+  if (!reps.length) { g.clear(); return; }
+  const series = GRUPOS_TIPO.map(t => ({
+    name: t, type: "bar", stack: "p", barMaxWidth: 18, itemStyle: {color: C.tipo[t], borderColor: C.cartao, borderWidth: 1},
+    data: reps.map(r => +(100 * (cel.get(r + "|" + t) || 0) / tot.get(r)).toFixed(1)),
+  }));
+  g.setOption(Object.assign(base(), {
+    legend: {top: 0, left: 0, icon: "roundRect", itemWidth: 10, itemHeight: 10, textStyle: {color: C.sec}},
+    grid: {top: 54, left: 8, right: 16, bottom: 4, containLabel: true},
+    xAxis: eixoValor({max: 100, axisLabel: {color: C.mudo, formatter: "{value}%"}}), yAxis: eixoCat(reps),
+    tooltip: Object.assign(base().tooltip, {trigger: "axis", axisPointer: {type: "shadow", shadowStyle: {color: "rgba(127,127,127,.08)"}},
+      formatter: ps => `<b>${esc(ps[0].name)}</b> · ${brl.format(tot.get(ps[0].name))}<br>` + ps.filter(p => p.value > 0)
+        .sort((a, b) => b.value - a.value).map(p => `${p.marker}${esc(p.seriesName)} <span style="float:right;margin-left:16px">${String(p.value).replace(".", ",")}%</span>`).join("<br>")}),
+    series,
+  }), true);
+}
+
+function desenharFinalidade(linhas) {
+  const tot = [...somar(linhas, l => l.fin).entries()].sort((a, b) => a[1] - b[1]);
+  const soma = tot.reduce((a, e) => a + e[1], 0) || 1;
+  const g = grafico("g-finalidade");
+  g.setOption(Object.assign(base(), {
+    grid: {top: 4, left: 8, right: 100, bottom: 4, containLabel: true},
+    xAxis: eixoValor({splitNumber: 3}), yAxis: eixoCat(tot.map(e => e[0])),
+    tooltip: Object.assign(base().tooltip, {formatter: p => `<b>${esc(p.name)}</b><br>${brl.format(p.value)} · ${(100 * p.value / soma).toFixed(1).replace(".", ",")}%`}),
+    series: [{type: "bar", barMaxWidth: 18, data: tot.map(([f, v]) => ({value: +v.toFixed(2), itemStyle: {
+      color: estado.fin && estado.fin !== f ? C.grade : C.serie[6], borderRadius: [0, 4, 4, 0]}})),
+      label: {show: true, position: "right", color: C.sec, fontSize: 11, fontFamily: "IBM Plex Mono", formatter: p => `${compacto(p.value)} · ${(100 * p.value / soma).toFixed(0)}%`}}],
+  }), true);
+  g.off("click"); g.on("click", p => { estado.fin = estado.fin === p.name ? "" : p.name; atualizar(); });
+
+  const pag = somar(linhas, l => l.pag); const cartao = pag.get("Cartão") || 0, reemb = pag.get("Reembolso") || 0;
+  const t = cartao + reemb || 1;
+  const gp = grafico("g-pagamento");
+  gp.setOption(Object.assign(base(), {
+    grid: {top: 30, left: 8, right: 8, bottom: 8, containLabel: false},
+    legend: {top: 0, left: 0, icon: "roundRect", itemWidth: 10, itemHeight: 10, textStyle: {color: C.sec}},
+    xAxis: {type: "value", max: t, show: false}, yAxis: {type: "category", data: [""], show: false},
+    tooltip: Object.assign(base().tooltip, {formatter: p => `<b>${p.seriesName}</b><br>${brl.format(p.value)} · ${(100 * p.value / t).toFixed(1).replace(".", ",")}%`}),
+    series: [
+      {name: "Cartão", type: "bar", stack: "p", barWidth: 30, data: [+cartao.toFixed(2)], itemStyle: {color: C.serie[0], borderRadius: [4, 0, 0, 4], borderColor: C.cartao, borderWidth: 1},
+        label: {show: cartao / t > .12, color: "#fff", fontWeight: 600, formatter: () => `Cartão ${(100 * cartao / t).toFixed(0)}%`}},
+      {name: "Reembolso", type: "bar", stack: "p", data: [+reemb.toFixed(2)], itemStyle: {color: C.serie[1], borderRadius: [0, 4, 4, 0], borderColor: C.cartao, borderWidth: 1},
+        label: {show: reemb / t > .12, color: "#fff", fontWeight: 600, formatter: () => `Reembolso ${(100 * reemb / t).toFixed(0)}%`}},
+    ],
+  }), true);
+}
+
+function topTabela(id, linhas, chave, rotulo) {
+  const tot = [...somar(linhas.filter(l => chave(l)), chave).entries()].sort((a, b) => b[1] - a[1]).slice(0, 10);
+  const max = tot[0]?.[1] || 1;
+  const cont = {}; linhas.forEach(l => { const k = chave(l); if (k) cont[k] = (cont[k] || 0) + 1; });
+  document.getElementById(id).innerHTML = `<thead><tr><th>${rotulo}</th><th class="num">Lanç.</th><th class="num">Total</th></tr></thead><tbody>` +
+    (tot.length ? tot.map(([k, v]) => `<tr><td title="${esc(k)}">${esc(k)}</td><td class="num">${cont[k]}</td>` +
+      `<td class="num"><div class="barrinha" style="justify-content:flex-end"><span>${brl0.format(v)}</span><i style="width:${Math.max(2, 44 * v / max)}px"></i></div></td></tr>`).join("")
+      : `<tr><td colspan="3" class="dica">Sem dados no filtro.</td></tr>`) + "</tbody>";
+}
+
+// ---------- KPIs ----------
+function desenharKpis(linhas) {
+  const meses = mesesEntre(estado.de, estado.ate);
+  const total = linhas.reduce((a, l) => a + l.valor, 0);
+  const mesesComGasto = new Set(linhas.map(l => l.mes)).size || 1;
+  // período anterior de mesmo tamanho
+  const n = meses.length;
+  const antDe = somarMes(estado.de, -n), antAte = somarMes(estado.de, -1);
+  let variacao = "";
+  if (antDe >= MESES_TODOS[0]) {
+    const ant = filtrar(true).filter(l => l.mes >= antDe && l.mes <= antAte).reduce((a, l) => a + l.valor, 0);
+    if (ant > 0) {
+      const d = (total - ant) / ant * 100;
+      variacao = `<span class="var ${d >= 0 ? "sobe" : "desce"}">${Math.abs(d).toFixed(1).replace(".", ",")}%</span> vs ${rotMes(antDe)}–${rotMes(antAte)}`;
+    }
+  }
+  const reps = new Set(linhas.map(l => l.rep)).size;
+  // reembolso: sempre à parte (não está na fatura), no período e nos filtros escolhidos, com centavos
+  const reemb = LINHAS.filter(l => l.pag === "Reembolso" && l.mes >= estado.de && l.mes <= estado.ate &&
+    (estado.reps.size === 0 || estado.reps.has(l.rep)) && (estado.tipos.size === 0 || estado.tipos.has(l.tipo)) &&
+    (!estado.fin || l.fin === estado.fin)).reduce((a, l) => a + l.valor, 0);
+  const rotTotal = estado.pag === "Cartão" ? "Total na fatura" : estado.pag === "Reembolso" ? "Total reembolsado" : "Fatura + reembolso";
+  const atip = linhas.filter(l => l.atipico);
+  const kp = [
+    ["destaque", rotTotal, brl.format(total), variacao || `${rotMes(estado.de)} a ${rotMes(estado.ate)}`],
+    ["", "Média por mês", brl.format(total / mesesComGasto), `${mesesComGasto} ${mesesComGasto === 1 ? "mês" : "meses"} com gasto`],
+    ["", "Lançamentos", num.format(linhas.length), `ticket médio ${brl.format(linhas.length ? total / linhas.length : 0)}`],
+    ["", "Representantes", num.format(reps), reps ? `média ${brl.format(total / reps)} cada` : "—"],
+    ["", "Reembolsado (fora da fatura)", brl.format(reemb), "pago pelo representante; não entra no total da fatura"],
+    ["", "Valores atípicos", num.format(atip.length), `${brl.format(atip.reduce((a, l) => a + l.valor, 0))} somados`],
+  ];
+  document.getElementById("kpis").innerHTML = kp.map(([c, r, v, d]) =>
+    `<div class="kpi ${c}"><span class="rot">${r}</span><span class="num" title="${esc(v)}">${v}</span><span class="det">${d}</span></div>`).join("");
+}
+
+// ---------- tabela de lançamentos ----------
+const POR_PAGINA = 25;
+const COLS = [["data", "Data"], ["rep", "Representante"], ["tipo", "Tipo"], ["desc", "Estabelecimento / descrição"], ["cidade", "Cidade"],
+              ["medico", "Médico"], ["fin", "Finalidade"], ["pag", "Pagamento"], ["valor", "Valor"]];
+function linhasTabela(linhas) {
+  const b = estado.busca.trim().toLowerCase();
+  let r = linhas.filter(l => (!estado.soAtipicos || l.atipico) &&
+    (!b || `${l.desc} ${l.cidade} ${l.medico} ${l.original} ${l.rep}`.toLowerCase().includes(b)));
+  const {col, dir} = estado.ordem;
+  return r.sort((a, c) => (a[col] > c[col] ? 1 : a[col] < c[col] ? -1 : 0) * dir);
+}
+function desenharTabela(linhas) {
+  const r = linhasTabela(linhas);
+  const paginas = Math.max(1, Math.ceil(r.length / POR_PAGINA));
+  estado.pagina = Math.min(estado.pagina, paginas - 1);
+  const fatia = r.slice(estado.pagina * POR_PAGINA, (estado.pagina + 1) * POR_PAGINA);
+  const seta = c => estado.ordem.col === c ? (estado.ordem.dir > 0 ? " ↑" : " ↓") : "";
+  document.getElementById("t-lanc").innerHTML = `<thead><tr>${COLS.map(([c, t]) =>
+      `<th data-col="${c}" class="${c === "valor" ? "num" : ""}" scope="col">${t}${seta(c)}</th>`).join("")}</tr></thead><tbody>` +
+    (fatia.length ? fatia.map(l => `<tr><td>${l.data.split("-").reverse().join("/")}</td><td>${esc(l.rep)}</td>` +
+      `<td><span class="pontinho" style="display:inline-block;background:${corTipo(l.tipo)};margin-right:6px"></span>${esc(l.tipo)}</td>` +
+      `<td class="quebra">${esc(l.desc)}</td><td>${esc(l.cidade)}</td><td>${esc(l.medico)}</td><td>${esc(l.fin)}</td><td>${esc(l.pag)}</td>` +
+      `<td class="num">${l.atipico ? '<span class="pill alerta">atípico</span> ' : ""}${brl.format(l.valor)}</td></tr>`).join("")
+      : `<tr><td colspan="9" class="dica">Nenhum lançamento no filtro.</td></tr>`) + "</tbody>";
+  document.getElementById("info-pag").textContent =
+    `${num.format(r.length)} lançamentos · ${brl.format(r.reduce((a, l) => a + l.valor, 0))} · página ${estado.pagina + 1} de ${paginas}`;
+  document.getElementById("ant").disabled = estado.pagina === 0;
+  document.getElementById("prox").disabled = estado.pagina >= paginas - 1;
+}
+
+// ---------- filtros ----------
+function alternar(conj, v) { conj.has(v) ? conj.delete(v) : conj.add(v); }
+function montarLista(id, valores, conj, cor) {
+  const raiz = document.getElementById(id), botao = raiz.querySelector("button.ctl");
+  let painel = null;
+  const fechar = () => { painel?.remove(); painel = null; botao.setAttribute("aria-expanded", "false"); };
+  botao.addEventListener("click", ev => {
+    ev.stopPropagation();
+    if (painel) return fechar();
+    painel = document.createElement("div"); painel.className = "painel-lista";
+    painel.innerHTML = `<input type="search" placeholder="Buscar…" aria-label="Buscar"><div class="acoes-lista"><button type="button" data-a="todos">Todos</button><button type="button" data-a="nenhum">Limpar</button></div>` +
+      valores.map(v => `<label><input type="checkbox" value="${esc(v)}" ${conj.has(v) ? "checked" : ""}>${cor ? `<span class="pontinho" style="background:${cor(v)}"></span>` : ""}${esc(v)}</label>`).join("");
+    painel.addEventListener("click", e => e.stopPropagation());
+    painel.querySelector("input[type=search]").addEventListener("input", e => {
+      const q = e.target.value.toLowerCase();
+      painel.querySelectorAll("label").forEach(l => l.hidden = !l.textContent.toLowerCase().includes(q));
+    });
+    painel.querySelectorAll("input[type=checkbox]").forEach(c => c.addEventListener("change", () => {
+      c.checked ? conj.add(c.value) : conj.delete(c.value); atualizar(false); }));
+    painel.querySelectorAll(".acoes-lista button").forEach(b => b.addEventListener("click", () => {
+      conj.clear(); painel.querySelectorAll("input[type=checkbox]").forEach(c => c.checked = false); atualizar(false); }));
+    raiz.appendChild(painel); botao.setAttribute("aria-expanded", "true");
+    painel.querySelector("input[type=search]").focus();
+  });
+  document.addEventListener("click", fechar);
+  document.addEventListener("keydown", e => { if (e.key === "Escape") fechar(); });
+}
+function rotuloLista(id, conj, nome) {
+  document.querySelector(`#${id} .rotulo-lista`).textContent =
+    conj.size === 0 ? "Todos" : conj.size === 1 ? [...conj][0] : `${conj.size} ${nome}`;
+}
+function desenharChips() {
+  const chips = [];
+  estado.reps.forEach(r => chips.push(["rep", r, r]));
+  estado.tipos.forEach(t => chips.push(["tipo", t, t]));
+  if (estado.fin) chips.push(["fin", estado.fin, `Finalidade: ${estado.fin}`]);
+  if (estado.pag !== "Cartão") chips.push(["pag", estado.pag, estado.pag === "Reembolso" ? "Reembolsado" : "Fatura + reembolso"]);
+  if (estado.de !== MES_ATUAL || estado.ate !== MES_ATUAL) chips.push(["periodo", "", `${rotMes(estado.de)} a ${rotMes(estado.ate)}`]);
+  document.getElementById("chips").innerHTML = chips.map(([k, v, t], i) =>
+    `<span class="chip">${esc(t)}<button type="button" data-i="${i}" aria-label="Remover filtro ${esc(t)}">×</button></span>`).join("");
+  document.querySelectorAll("#chips button").forEach(b => b.addEventListener("click", () => {
+    const [k, v] = chips[+b.dataset.i];
+    if (k === "rep") estado.reps.delete(v); else if (k === "tipo") estado.tipos.delete(v);
+    else if (k === "fin") estado.fin = ""; else if (k === "pag") estado.pag = "Cartão";
+    else { estado.de = estado.ate = MES_ATUAL; }
+    atualizar();
+  }));
+}
+function sincronizarControles() {
+  const de = document.getElementById("f-de"), ate = document.getElementById("f-ate");
+  de.value = paraTexto(estado.de); ate.value = paraTexto(estado.ate);
+  document.getElementById("erro-periodo").hidden = true;
+  document.getElementById("f-fin").value = estado.fin;
+  document.querySelectorAll("#f-pag button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === estado.pag)));
+  const n = mesesEntre(estado.de, estado.ate).length;
+  document.querySelectorAll("#atalhos button").forEach(b => {
+    const ativo = b.dataset.ano ? estado.de === `${b.dataset.ano}-01` && estado.ate === `${b.dataset.ano}-12`
+      : +b.dataset.meses === 0 ? estado.de === MESES_TODOS[0] && estado.ate === MESES_TODOS.at(-1)
+      : estado.ate === MES_ATUAL && n === +b.dataset.meses;
+    b.setAttribute("aria-pressed", String(!!ativo));
+  });
+  rotuloLista("f-rep", estado.reps, "representantes");
+  rotuloLista("f-tipo", estado.tipos, "tipos");
+}
+
+// ---------- qualidade ----------
+function desenharQualidade() {
+  const cont = {}; LINHAS.forEach(l => cont[l.mes] = (cont[l.mes] || 0) + 1);
+  const valores = Object.values(cont).sort((a, b) => a - b), mediana = valores[Math.floor(valores.length / 2)];
+  const fracos = MESES_TODOS.filter(m => cont[m] < mediana * .25);
+  const ex = DADOS.excluidas;
+
+  const itens = [
+    `${num.format(LINHAS.length)} lançamentos de ${DADOS.fonte}, gerado em ${DADOS.gerado_em.split("-").reverse().join("/")}.`,
+    Object.values(ex).some(v => v) ? `Linhas da base geral fora da análise: ${Object.entries(ex).filter(([, v]) => v).map(([k, v]) => `${v} ${k}`).join(", ")}.` : "",
+    fracos.length ? `<b>Meses com poucos lançamentos (menos de 25% do normal):</b> ${fracos.map(rotMes).join(", ")}. Provavelmente faltam planilhas desses meses; compare com cuidado.` : "",
+
+    `Categorias da análise: ${GRUPOS_TIPO.join(", ")}. O tipo como veio (ex.: “HOSPEDAGEM”, “Uber/Táxi”) aparece na lista geral e no detalhe de “Outros”.`,
+    `Fontes: ${Object.entries(LINHAS.reduce((a, l) => (a[l.fonte] = (a[l.fonte] || 0) + 1, a), {})).map(([k, v]) => `${num.format(v)} da ${k.toLowerCase()}`).join(" · ")}. ` +
+      (DADOS.substituidas ? `${num.format(DADOS.substituidas)} linhas da base geral foram substituídas pelas planilhas enviadas no sistema (mesmo representante e período).` : ""),
+    `Valor atípico: acima de 3× a mediana do tipo de gasto (ou do percentil 98, o que for maior). Serve para revisar, não é erro.`,
+  ];
+  document.getElementById("qualidade").innerHTML = itens.filter(Boolean).map(i => `<li>${i}</li>`).join("");
+}
+
+// Campo médico é texto livre: descarta respostas que não são nome de médico.
+const SEM_MEDICO = /^(n[aã]o( tem| há| se aplica)?|nenhum|sem( m[eé]dic\w*)?( vinculado)?|n\/?a|none|-+|\.+|x+|todos?|todas as equipes|v[aá]rios( m[eé]dicos)?)$/i;
+const medicoValido = m => { const t = (m || "").trim(); return t.length >= 3 && !SEM_MEDICO.test(t); };
+
+// ---------- ciclo ----------
+function atualizar(sincronizar = true) {
+  estado.pagina = 0;
+  if (sincronizar !== false) sincronizarControles(); else { rotuloLista("f-rep", estado.reps, "representantes"); rotuloLista("f-tipo", estado.tipos, "tipos"); }
+  desenharChips();
+  const linhas = filtrar();
+  desenharKpis(linhas); desenharMensal(linhas); desenharRanking(linhas); desenharTipos(linhas); desenharMapa();
+  desenharPerfil(linhas); desenharFinalidade(linhas);
+  topTabela("t-estab", linhas, l => l.desc, "Descrição");
+  topTabela("t-cidade", linhas, l => l.cidade, "Cidade");
+  topTabela("t-medico", linhas, l => medicoValido(l.medico) ? l.medico : "", "Médico");
+  desenharTabela(linhas);
+  const per = `${rotMes(MESES_TODOS[0])} a ${rotMes(MESES_TODOS.at(-1))}`;
+  document.getElementById("subtitulo").textContent = `${num.format(LINHAS.length)} lançamentos · ${REPS_TODOS.length} representantes · ${per}`;
+}
+
+function iniciar() {
+  lerCores();
+  document.getElementById("f-fin").innerHTML += FINS.map(f => `<option>${esc(f)}</option>`).join("");
+  // DE / ATÉ digitados (MM/AAAA): aplica ao sair do campo ou com Enter; erro claro sem mudar o filtro
+  const aplicarPeriodo = () => {
+    const de = document.getElementById("f-de"), ate = document.getElementById("f-ate"), erro = document.getElementById("erro-periodo");
+    const msg = validarPeriodo(de.value, ate.value);
+    erro.textContent = msg; erro.hidden = !msg;
+    if (msg) return;
+    estado.de = paraIso(de.value.trim()); estado.ate = paraIso(ate.value.trim()); atualizar();
+  };
+  ["f-de", "f-ate"].forEach(id => {
+    const c = document.getElementById(id);
+    c.addEventListener("change", aplicarPeriodo);
+    c.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); aplicarPeriodo(); } });
+  });
+  document.getElementById("f-fin").addEventListener("change", e => { estado.fin = e.target.value; atualizar(); });
+  document.querySelectorAll("#f-pag button").forEach(b => b.addEventListener("click", () => { estado.pag = b.dataset.v; atualizar(); }));
+  document.querySelectorAll("#atalhos button").forEach(b => b.addEventListener("click", () => {
+    if (b.dataset.ano) { estado.de = `${b.dataset.ano}-01`; estado.ate = `${b.dataset.ano}-12`; }
+    else if (+b.dataset.meses === 0) { estado.de = MESES_TODOS[0]; estado.ate = MESES_TODOS.at(-1); }
+    else { estado.ate = MES_ATUAL; estado.de = somarMes(MES_ATUAL, 1 - +b.dataset.meses); }
+    atualizar();
+  }));
+  document.querySelectorAll("#abas-mensal button").forEach(b => b.addEventListener("click", () => {
+    estado.abaMensal = b.dataset.v;
+    document.querySelectorAll("#abas-mensal button").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+    desenharMensal(filtrar());
+  }));
+  document.getElementById("limpar").addEventListener("click", () => {
+    estado.reps.clear(); estado.tipos.clear(); estado.fin = ""; estado.pag = "Cartão"; estado.de = estado.ate = MES_ATUAL; atualizar();
+  });
+  montarLista("f-rep", REPS_TODOS, estado.reps);
+  montarLista("f-tipo", TIPOS_TODOS, estado.tipos, t => corTipo(t));
+  document.getElementById("busca").addEventListener("input", e => { estado.busca = e.target.value; estado.pagina = 0; desenharTabela(filtrar()); });
+  document.getElementById("so-atipicos").addEventListener("change", e => { estado.soAtipicos = e.target.checked; estado.pagina = 0; desenharTabela(filtrar()); });
+  document.getElementById("ant").addEventListener("click", () => { estado.pagina--; desenharTabela(filtrar()); });
+  document.getElementById("prox").addEventListener("click", () => { estado.pagina++; desenharTabela(filtrar()); });
+  document.getElementById("t-lanc").addEventListener("click", e => {
+    const th = e.target.closest("th"); if (!th) return;
+    const c = th.dataset.col; estado.ordem = {col: c, dir: estado.ordem.col === c ? -estado.ordem.dir : (c === "valor" || c === "data" ? -1 : 1)};
+    desenharTabela(filtrar());
+  });
+  document.getElementById("exportar").addEventListener("click", () => {
+    const r = linhasTabela(filtrar());
+    const linhasCsv = [COLS.map(c => c[1]).join(";"), ...r.map(l => COLS.map(([c]) => c === "valor" ? l.valor.toFixed(2).replace(".", ",")
+      : `"${String(l[c] ?? "").replace(/"/g, '""')}"`).join(";"))];
+    const blob = new Blob(["﻿" + linhasCsv.join("\r\n")], {type: "text/csv;charset=utf-8"});
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "gastos-representantes.csv"; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  });
+  // tema: escolhido no topo da página (comum a todas as telas); aqui só redesenha os gráficos com as cores novas
+  document.addEventListener("temamudou", () => { lerCores(); atualizar(); });
+  desenharQualidade();
+  lerCores(); atualizar();
+}
+iniciar();
+</script>
+{% endif %}
+{% endblock %}

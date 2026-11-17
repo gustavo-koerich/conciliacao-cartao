@@ -1,0 +1,86 @@
+{% extends "conciliacao/base.html" %}
+{% load conciliacao_extras %}
+{% block titulo %}Lista geral de gastos{% endblock %}
+{% block conteudo %}
+<section class="cartao">
+  <div class="linha-titulo">
+    <h1 class="titulo">Lista geral de gastos</h1>
+    <div class="acoes">
+      <a class="btn secundario" href="{% url 'conciliacao:analise' %}">Ver dashboard</a>
+      <a class="btn" href="?{{ query }}{% if query %}&amp;{% endif %}formato=xlsx">Exportar Excel ({{ qtd }} linhas)</a>
+    </div>
+  </div>
+  <p class="secundario">Todos os lançamentos das faturas, com o <strong>valor da fatura</strong> (é ele que vale), mais o que o
+    representante declarou ou o financeiro escolheu. Reembolsos aparecem à parte (não estão na fatura) e formulários sem
+    lançamento aparecem como "Não encontrado na fatura", sem entrar no total. O período é o <strong>mês da fatura</strong>.
+    O Excel sai no layout da GERAL REPRESENTANTES (com paciente), pronto para completar à mão e reimportar abaixo.</p>
+
+  <form method="get" class="filtros-lista">
+    <label>Representante<select name="rep"><option value="">Todos</option>{% for r in reps %}<option{% if f.rep == r %} selected{% endif %}>{{ r }}</option>{% endfor %}</select></label>
+    <label>De (mês da fatura)<input type="text" name="de" value="{{ de }}" placeholder="MM/AAAA" inputmode="numeric" maxlength="7" pattern="(0[1-9]|1[0-2])/[0-9]{4}" class="mes-ano" required></label>
+    <label>Até<input type="text" name="ate" value="{{ ate }}" placeholder="MM/AAAA" inputmode="numeric" maxlength="7" pattern="(0[1-9]|1[0-2])/[0-9]{4}" class="mes-ano" required></label>
+    <label>Categoria<select name="categoria"><option value="">Todas</option>{% for c in categorias %}<option{% if f.categoria == c %} selected{% endif %}>{{ c }}</option>{% endfor %}</select></label>
+    <label>Pagamento<select name="pagamento"><option value="">Todos</option>{% for p in "Cartão,Reembolso"|split:"," %}<option{% if f.pagamento == p %} selected{% endif %}>{{ p }}</option>{% endfor %}</select></label>
+    <label>Fonte<select name="fonte"><option value="">Todas</option>{% for p in fontes %}<option{% if f.fonte == p %} selected{% endif %}>{{ p }}</option>{% endfor %}</select></label>
+    <label class="busca-lista">Buscar<input type="search" name="q" value="{{ f.q|default:'' }}" placeholder="descrição, cidade, médico, paciente…"></label>
+    <button class="btn" type="submit">Filtrar</button>
+    <a class="limpar-lista" href="{% url 'conciliacao:analise_lista' %}">Limpar</a>
+  </form>
+  {% if erro_periodo %}<p class="aviso-erro" role="alert">{{ erro_periodo }} Mostrando o mês atual.</p>{% endif %}
+  <p><strong>{{ qtd }}</strong> linhas · na fatura <strong class="mono">{{ totais.fatura|moeda }}</strong>
+    · reembolsado (fora da fatura) <strong class="mono">{{ totais.reembolso|moeda }}</strong>
+    {% if totais.nao_encontrado %}· não encontrado na fatura (fora do total) <span class="mono">{{ totais.nao_encontrado|moeda }}</span>{% endif %}</p>
+</section>
+
+<section class="cartao">
+  <div class="tabela">
+    <table>
+      <thead><tr><th>Data</th><th>Representante</th><th>Categoria</th><th>Tipo (como veio)</th><th>Descrição</th><th>Finalidade</th><th>Pagamento</th><th>Médico</th><th>Paciente</th><th>Cidade</th><th class="num">Valor</th><th class="num">Informado</th><th class="num">Diferença</th><th>Mês fatura</th><th>Evento</th><th>Fonte</th><th>Conciliação</th></tr></thead>
+      <tbody>
+      {% for l in pagina %}
+        <tr>
+          <td>{{ l.data|date:"d/m/Y" }}</td><td>{{ l.rep }}</td><td>{{ l.categoria }}</td><td class="secundario">{{ l.despesa }}</td>
+          <td>{{ l.descricao|truncatechars:50 }}</td><td>{{ l.finalidade }}</td><td>{{ l.pagamento }}</td><td>{{ l.medico }}</td>
+          <td>{{ l.paciente }}</td><td>{{ l.cidade }}</td><td class="num">{{ l.valor|moeda }}</td>
+          <td class="num secundario">{% if l.valor_informado is not None %}{{ l.valor_informado|moeda }}{% endif %}</td>
+          <td class="num">{% if l.diferenca %}{{ l.diferenca|moeda }}{% if l.divergente %} <span class="pill st-semform">Divergente</span>{% endif %}{% endif %}</td>
+          <td class="mono">{{ l.mes|slice:"5:" }}/{{ l.mes|slice:":4" }}</td><td>{{ l.evento }}</td>
+          <td><span class="pill {% if l.fonte == 'Fatura' %}st-info{% elif l.fonte == 'Não encontrado na fatura' %}st-semform{% else %}st-neutro{% endif %}">{{ l.fonte }}</span></td>
+          <td>{{ l.situacao|default:"—" }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="17" class="secundario">Nenhum gasto com esses filtros.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if pagina.paginator.num_pages > 1 %}
+  <nav class="paginacao" aria-label="Páginas">
+    {% if pagina.has_previous %}<a class="btn secundario" href="?{{ query }}{% if query %}&amp;{% endif %}pagina={{ pagina.previous_page_number }}">← Anterior</a>{% endif %}
+    <span class="secundario">Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
+    {% if pagina.has_next %}<a class="btn secundario" href="?{{ query }}{% if query %}&amp;{% endif %}pagina={{ pagina.next_page_number }}">Próxima →</a>{% endif %}
+  </nav>
+  {% endif %}
+</section>
+
+<section class="cartao">
+  <h2 class="subtitulo">Base geral (histórico)</h2>
+  <p class="secundario">
+    {% if base %}Em uso: <strong>v{{ base.versao }}</strong> · {{ base.arquivo_nome_original }} · {{ base.resumo.linhas }} despesas · enviada em {{ base.ativado_em|date:"d/m/Y H:i" }} por {{ base.usuario|default:"—" }}.
+    {% else %}Nenhuma base importada.{% endif %}
+    Enviar uma nova versão substitui a base inteira (a anterior fica guardada). Em períodos com planilha no sistema, ajuste pela planilha ou pela tela do representante.</p>
+  <form method="post" action="{% url 'conciliacao:analise_importar_base' %}" enctype="multipart/form-data" class="envio">
+    {% csrf_token %}
+    <label for="arquivo-base" class="soltar"><span>Planilha geral (.xlsx, aba ATUALIZADOS)</span>
+      <input type="file" id="arquivo-base" name="arquivo" accept=".xlsx" required></label>
+    <button class="btn" type="submit">Importar base geral</button>
+  </form>
+  {% if versoes_base %}
+  <div class="tabela" style="margin-top:12px"><table>
+    <thead><tr><th>Enviada em</th><th>Versão</th><th>Arquivo</th><th class="num">Despesas</th><th>Situação</th><th>Usuário</th><th>IP</th></tr></thead>
+    <tbody>{% for v in versoes_base %}<tr><td>{{ v.criado_em|date:"d/m/Y H:i" }}</td><td>v{{ v.versao }}</td><td>{{ v.arquivo_nome_original }}</td><td class="num">{{ v.resumo.linhas|default:"—" }}</td>
+      <td>{% if v.ativo %}<span class="pill st-ok">em uso</span>{% else %}<span class="pill st-neutro">substituída</span>{% endif %}</td><td>{{ v.usuario|default:"—" }}</td><td class="mono">{{ v.ip|default:"—" }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% endif %}
+</section>
+{% endblock %}

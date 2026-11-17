@@ -1,0 +1,219 @@
+<nav class="ajuda-sumario" aria-label="Sumário">
+  <strong>Neste guia</strong>
+  <ul>
+    <li><a href="#mes">O mês, do começo ao fim</a></li>
+    <li><a href="#cores">O que cada cor quer dizer</a></li>
+    <li><a href="#fatura">1. Carregar a fatura</a></li>
+    <li><a href="#planilhas">2. Carregar as planilhas</a></li>
+    <li><a href="#painel">3. Ler o painel</a></li>
+    <li><a href="#resolver">4. Resolver as pendências</a></li>
+    <li><a href="#link">5. Pedir ao representante pelo link</a></li>
+    <li><a href="#notas">6. Notas fiscais (cartões BB)</a></li>
+    <li><a href="#analise">7. Análise e lista geral</a></li>
+    <li><a href="#representantes">Para os representantes: como preencher</a></li>
+    <li><a href="#nao-errar">Para não errar (financeiro)</a></li>
+    <li><a href="#central">Central: usuários e segurança (administradores)</a></li>
+    <li><a href="#duvidas">Dúvidas comuns</a></li>
+  </ul>
+</nav>
+
+<section class="ajuda-bloco" id="mes">
+  <h2>O mês, do começo ao fim</h2>
+  <ol class="passos">
+    <li><strong>Fatura</strong>: carregue o PDF da fatura do cartão (Ailos ou Banco do Brasil).</li>
+    <li><strong>Planilhas</strong>: carregue a planilha GERAL REPRESENTANTES (ou a planilha do formulário de cada representante).</li>
+    <li><strong>Painel</strong>: o sistema cruza tudo sozinho. Veja quem ficou com pendência.</li>
+    <li><strong>Resolver</strong>: abra cada representante e trate as linhas que não estão verdes.</li>
+    <li><strong>Link</strong>: o que só o representante sabe responder, mande pelo link no WhatsApp.</li>
+    <li><strong>Aprovar</strong>: as respostas chegam em laranja; aprove (fica verde) ou recuse com o motivo.</li>
+  </ol>
+  <p class="secundario">Regra de ouro: <strong>o valor manda</strong>. Um gasto do formulário só casa com a fatura se o valor for
+    exatamente o mesmo. A data só serve para desempatar (até 3 dias de diferença casa normal; mais que isso vira ressalva).</p>
+</section>
+
+<section class="ajuda-bloco" id="cores">
+  <h2>O que cada cor quer dizer</h2>
+  <table class="ajuda-cores">
+    <tr><td><span class="pill st-ok">Conciliado</span></td><td>Fatura e formulário batem. Nada a fazer.</td></tr>
+    <tr><td><span class="pill st-ressalva">Conciliado com ressalva</span></td><td>Bateu, mas com alguma diferença (data distante, ajuste manual). Sempre tem um motivo escrito.</td></tr>
+    <tr><td><span class="pill st-laranja">Respondido, aguardando aprovação</span></td><td>O representante respondeu pelo link. Falta o financeiro aprovar ou recusar.</td></tr>
+    <tr><td><span class="pill st-semform">Sem justificativa</span></td><td>Está na fatura e o representante não lançou (entra no total, pois foi faturado). Peça pelo link.</td></tr>
+    <tr><td><span class="pill st-ressalva">Não encontrado na fatura</span></td><td>Lançado no formulário e ainda não apareceu na fatura. Não entra no total.</td></tr>
+    <tr><td><span class="pill st-semform">Sem nota fiscal</span></td><td>Cartões BB: compra sem nota e fora do controle de compras.</td></tr>
+    <tr><td><span class="pill st-ressalva">Pendente de análise</span></td><td>O sistema não conseguiu decidir sozinho (valor estranho, moeda estrangeira, "não reconheço"). Olhe com calma.</td></tr>
+    <tr><td><span class="pill st-neutro">Aguardando planilha</span></td><td>A planilha desse representante ainda não foi carregada.</td></tr>
+    <tr><td><span class="pill st-info">Reembolso / Estorno / Encargos</span></td><td>Não é gasto a conciliar com formulário (reembolso pago à parte, estorno que se anula, tarifa do banco).</td></tr>
+    <tr><td><span class="pill st-neutro">Fora do escopo</span></td><td>Cartão ou gasto que não entra na conciliação.</td></tr>
+  </table>
+</section>
+
+<section class="ajuda-bloco" id="fatura">
+  <h2>1. Carregar a fatura</h2>
+  <ol class="passos">
+    <li>Menu <strong>Fatura</strong> → escolha o cartão/banco → selecione o PDF → <strong>Ler fatura</strong>.</li>
+    <li>O sistema confere os totais de cada seção com o total impresso na fatura (<em>Conferência por seção</em>).</li>
+    <li>Se tudo fechar, pronto: a fatura entra na competência do mês.</li>
+  </ol>
+  <h3>Se aparecer "A leitura terminou, mas os totais não fecharam"</h3>
+  <ul>
+    <li>Clique <strong>Ler de novo</strong> primeiro (resolve a maioria dos casos depois de uma atualização do sistema).</li>
+    <li>Se continuar, compare a diferença com a fatura impressa. Se você conferiu e está certo, use <strong>Ignorar a diferença e seguir</strong>.</li>
+    <li>Se não souber o motivo, use <strong>Ver o relatório para o suporte</strong> → <strong>Baixar .txt</strong> e mande para quem cuida do sistema.</li>
+  </ul>
+  <h3>Se o sistema pedir para confirmar o cabeçalho</h3>
+  <p>Às vezes ele não lê o mês ou o cartão no topo do PDF. Confira os dados mostrados e clique <strong>Seguir com estes dados</strong>.</p>
+  <p class="secundario">Carregou a fatura errada ou uma versão nova? Em <strong>Histórico de importações</strong>, <strong>Usar esta versão</strong> escolhe qual vale.</p>
+</section>
+
+<section class="ajuda-bloco" id="planilhas">
+  <h2>2. Carregar as planilhas</h2>
+  <ul>
+    <li><strong>Planilha geral (todos os representantes)</strong>: envie a GERAL REPRESENTANTES.xlsx em <strong>Planilhas</strong> → <strong>Enviar planilha geral</strong>. O sistema separa por representante e por mês sozinho.</li>
+    <li><strong>Por representante</strong>: se preferir, envie a planilha do formulário de cada um na linha dele → <strong>Enviar</strong>.</li>
+  </ul>
+  <p class="secundario">Mandou de novo a mesma planilha atualizada? Pode enviar: a versão nova substitui a anterior, e o que você já ajustou à mão continua valendo.</p>
+</section>
+
+<section class="ajuda-bloco" id="painel">
+  <h2>3. Ler o painel</h2>
+  <ul>
+    <li>No topo escolha a <strong>competência</strong> (cartão + mês).</li>
+    <li><strong>Por representante</strong>: uma barra colorida por pessoa mostra quanto já está verde. Clique no nome para abrir.</li>
+    <li><strong>Alertas que mudam o número</strong>: avisos que mexem no total (ex.: planilha faltando, gasto duplicado). Leia antes de fechar o mês.</li>
+  </ul>
+</section>
+
+<section class="ajuda-bloco" id="resolver">
+  <h2>4. Resolver as pendências (na página do representante)</h2>
+  <p>Cada linha mostra o que veio na fatura e o que o representante declarou. Na coluna <strong>Situação</strong>:</p>
+  <ul>
+    <li><strong>Mudar a situação</strong>: escolha na lista. A cor muda na hora. <em>Conciliado com ressalva</em> pede um motivo.</li>
+    <li><strong>corrigir valor</strong>: corrige o valor que o <em>representante</em> declarou (o da fatura nunca muda). Escreva o motivo → <strong>aplicar</strong>. <strong>voltar ao informado</strong> desfaz.</li>
+    <li><strong>corrigir data</strong> e <strong>categoria</strong>: mesmo jeito, para a data e o tipo de gasto do formulário.</li>
+    <li><strong>Comprovante</strong>: <strong>adicionar</strong> anexa foto ou PDF; <strong>abrir</strong> mostra; o <strong>×</strong> remove.</li>
+  </ul>
+  <p class="secundario">Toda alteração fica gravada com quem fez e quando (menu Registro, para administradores). A página volta para a mesma posição depois de salvar.</p>
+</section>
+
+<section class="ajuda-bloco" id="link">
+  <h2>5. Pedir ao representante pelo link</h2>
+  <ol class="passos">
+    <li>Na página do representante, em <strong>Pendências para o representante responder</strong>, escolha <strong>Link válido por</strong> (padrão: 1 dia) → <strong>Gerar link</strong>.</li>
+    <li>A tela mostra o link <strong>uma única vez</strong>, com a mensagem pronta. Use <strong>Copiar</strong> ou <strong>Abrir no WhatsApp</strong> e envie para o representante.</li>
+    <li>Ele abre no celular, responde cada gasto e tira a foto do comprovante. A linha fica <span class="pill st-laranja">laranja</span>.</li>
+    <li>Confira a resposta (quadro <em>Resposta do representante</em>) → <strong>Aprovar</strong> (fica verde) ou <strong>recusar</strong> com o motivo. Ele vê o motivo e corrige pelo mesmo link.</li>
+  </ol>
+  <ul>
+    <li><strong>Revogar</strong>: o link deixa de abrir na hora (ex.: mandou para a pessoa errada).</li>
+    <li>Link vencido? Gere outro: as respostas já enviadas continuam.</li>
+    <li>Se o representante marcar <em>"não reconheço este gasto"</em>, a linha vai para <span class="pill st-ressalva">Pendente de análise</span>.</li>
+    <li><strong>Excluir (teste)</strong> (só administradores): apaga um link de teste com as respostas e fotos dele. Use só para testes.</li>
+  </ul>
+</section>
+
+<section class="ajuda-bloco" id="notas">
+  <h2>6. Notas fiscais (cartões BB)</h2>
+  <ul>
+    <li>No painel do mês do cartão BB, clique no aviso <strong>"… lançamento(s) sem nota"</strong> → <strong>Enviar notas</strong> (XML, PDF ou um .zip com várias) e <strong>Enviar controle</strong> (planilha .xlsx do controle de compras).</li>
+    <li>O sistema casa nota × fatura. O que sobra aparece em <em>Sem nota e fora do controle de compras</em>; use <strong>Associar</strong> para ligar à mão, <strong>Desfazer</strong> para soltar.</li>
+    <li>Enviou notas novas depois? <strong>Casar de novo com a fatura</strong>.</li>
+  </ul>
+</section>
+
+<section class="ajuda-bloco" id="analise">
+  <h2>7. Análise e lista geral</h2>
+  <ul>
+    <li><strong>A fatura é a fonte da verdade</strong>: todos os totais usam o <em>valor da fatura</em>. O que o representante
+      declarou (ou o financeiro escolheu) só complementa: categoria, médico, paciente, finalidade, evento.</li>
+    <li>Lançamento sem formulário entra no total como <span class="pill st-semform">Sem justificativa</span>;
+      formulário sem lançamento aparece como <span class="pill st-ressalva">Não encontrado na fatura</span> e <strong>não</strong> entra.</li>
+    <li><strong>Reembolsado (fora da fatura)</strong>: pago pelo representante, aparece à parte, com centavos, sem somar no total da fatura.</li>
+    <li>Quando o valor informado difere do da fatura, aparecem os dois e a diferença; <span class="pill st-semform">Divergente</span>
+      quando a diferença não se explica por parcelamento (formulário com o total, fatura com a parcela) ou conta dividida.</li>
+    <li><strong>Análise</strong>: gráficos por representante, tipo de gasto, médico, cidade e mês da fatura. Botões <em>Na fatura</em>
+      (padrão), <em>Reembolsado</em> e <em>Os dois</em>. Entram os cartões dos representantes e os do João.</li>
+    <li><strong>Lista geral</strong>: todas as linhas (inclusive "Não encontrado na fatura"), com valor da fatura, informado,
+      diferença, mês da fatura e evento. <strong>Exportar Excel</strong> sai no layout da GERAL REPRESENTANTES, com essas colunas no fim.</li>
+  </ul>
+</section>
+
+<section class="ajuda-bloco" id="representantes">
+  <h2>Para os representantes: como preencher</h2>
+  <h3>No formulário de despesas (todo gasto, no dia)</h3>
+  <table class="ajuda-cores">
+    <tr><td><strong>Data</strong></td><td>O dia do gasto (o que está no recibo), não o dia em que preencheu.</td></tr>
+    <tr><td><strong>Valor</strong></td><td>Exatamente o valor cobrado no cartão, só número: <code>48,90</code>. Nada de texto junto ("48,90 almoço"). Em dólar? Escreva no campo Descrição.</td></tr>
+    <tr><td><strong>Despesa</strong></td><td>O tipo de gasto da lista (Alimentação com médicos, Combustível, Estacionamento, Hospedagem…).</td></tr>
+    <tr><td><strong>Pagamento</strong></td><td><em>Cartão</em> se passou no cartão da empresa; <em>Reembolso</em> se pagou do próprio bolso.</td></tr>
+    <tr><td><strong>Descrição / Finalidade</strong></td><td>O que foi e para quê, em poucas palavras ("almoço pós-procedimento").</td></tr>
+    <tr><td><strong>Médico, Paciente, Cidade</strong></td><td>Quando o gasto for ligado a um atendimento.</td></tr>
+    <tr><td><strong>Foto do Recibo/NF</strong></td><td>Foto legível, inteira, com valor e data aparecendo.</td></tr>
+  </table>
+  <ul>
+    <li><strong>Um lançamento por gasto.</strong> Não junte dois recibos num só, e não lance o mesmo gasto duas vezes.</li>
+    <li><strong>Parcelado</strong>: lance uma vez, com o valor total, e diga na descrição em quantas vezes.</li>
+    <li><strong>Conta dividida</strong> (dois cartões ou duas pessoas): cada um lança só a sua parte, com o valor que passou no seu cartão.</li>
+  </ul>
+  <h3>Quando receber o link do financeiro</h3>
+  <ol class="passos">
+    <li>Abra o link no celular (vale pelo prazo escrito na mensagem; é só seu, não repasse).</li>
+    <li>Para cada gasto: escolha a categoria, descreva, informe médico/paciente/cidade se tiver e toque <strong>Tirar foto do comprovante</strong>. Salve.</li>
+    <li>Não reconhece o gasto? Marque <em>"não reconheço"</em> e explique na observação.</li>
+    <li>Se aparecer <strong>"O financeiro pediu correção: …"</strong>, corrija o que foi pedido e salve de novo.</li>
+  </ol>
+</section>
+
+<section class="ajuda-bloco" id="central">
+  <h2>Central: usuários e segurança (administradores)</h2>
+  <ul>
+    <li><strong>Endereços</strong>: na rede interna (Tailscale) <code>https://central.exemplo.ts.net</code>; pela internet <code>https://central.exemplo.ts.net:8443</code>. Sempre usuário + senha + código do autenticador.</li>
+    <li><strong>Cadastrar alguém</strong>: Central → <strong>Gerenciar usuários</strong> → Cadastrar pessoa. Mostre o QR code para ela ler no Google/Microsoft Authenticator; ela cria a senha em "Primeiro acesso". Depois, <strong>Acessos</strong>: marque o que ela usa e, se for entrar de fora, <em>acesso pela internet</em>.</li>
+    <li><strong>Conta bloqueada</strong> (5 erros seguidos; chega aviso no Teams): <strong>Desbloquear</strong> na lista. Se não foi a própria pessoa, <strong>Redefinir 2FA</strong> antes.</li>
+    <li><strong>Trocou de celular</strong>: <strong>Redefinir 2FA</strong> e ela lê o QR novo.</li>
+    <li><strong>Quem fez o quê</strong>: Central → <strong>Registro de atividades</strong> (logins, bloqueios, cadastros) e Conciliação → <strong>Registro</strong> (alterações).</li>
+    <li>Administração de usuários, Portainer e banco de dados só abrem pela rede interna.</li>
+  </ul>
+</section>
+
+<section class="ajuda-bloco" id="nao-errar">
+  <h2>Para não errar (financeiro)</h2>
+  <table class="ajuda-cores">
+    <tr><td><strong>Corrigir valor</strong></td><td>Só quando o representante digitou errado o valor <em>daquele mesmo gasto</em>
+      (conferido no recibo). Nunca para fazer um gasto casar com outra cobrança (outra parcela, outro mês): isso faria
+      ele contar duas vezes. O sistema recusa e explica quando o gasto já fecha outra cobrança.</td></tr>
+    <tr><td><strong>Cobrança sem formulário</strong></td><td>Na linha da fatura, escolha a categoria e mude a
+      <strong>Situação</strong> (Conciliado ou Conciliado com ressalva), ou peça ao representante pelo link. Ela entra no
+      dashboard com o valor da fatura e a categoria escolhida.</td></tr>
+    <tr><td><strong>Parcelado</strong></td><td>Basta conciliar uma parcela. As seguintes da mesma compra ficam verdes
+      sozinhas, com o motivo "parcela k/N de compra já conciliada na fatura …".</td></tr>
+    <tr><td><strong>Gasto que cai na fatura seguinte</strong></td><td>Lançado na planilha de um mês e cobrado na fatura do
+      outro: casa lá e, no mês da planilha, aparece verde como "conciliado na fatura …". Nada a fazer.</td></tr>
+    <tr><td><strong>Avisos amarelos/azuis</strong></td><td>“possível cobrança em dobro”: a mesma compra aparece repetida na fatura,
+      confira no recibo. “provável estorno da compra de …”: o crédito parece devolver uma compra de fatura anterior; se for,
+      escolha a situação Estorno compensado. No painel, “edições ficaram sem lançamento” lista o que precisa ser refeito
+      depois de trocar a versão da fatura. Os avisos não mudam nada sozinhos.</td></tr>
+    <tr><td><strong>Valor com texto</strong></td><td>"130 po", "R$ 50 almoço": fica em Pendente de análise e fora do
+      dashboard até você usar <strong>corrigir valor</strong> com o número do recibo.</td></tr>
+    <tr><td><strong>Mês do dashboard</strong></td><td>DE e ATÉ são digitados (MM/AAAA) e filtram pelo <em>mês da fatura</em>:
+      outubro = tudo o que veio na fatura de outubro, mesmo compra de setembro. Igual ao total da página do representante.</td></tr>
+    <tr><td><strong>Finalidade e Evento</strong></td><td>Na linha, ao lado de Paciente. Evento só com a finalidade EVENTO;
+      se o evento não estiver na lista, use “+ Cadastrar novo evento” (o sistema põe em maiúsculas, acrescenta “EVENTO” e
+      recusa nome repetido). Trocar a finalidade limpa o evento. Fica registrado quem escolheu e quando.</td></tr>
+  </table>
+</section>
+
+<section class="ajuda-bloco" id="duvidas">
+  <h2>Dúvidas comuns</h2>
+  <dl class="ajuda-faq">
+    <dt>O valor da fatura está diferente do que o representante lançou. Corrijo qual?</dt>
+    <dd>Só o declarado (<strong>corrigir valor</strong>), com motivo. A fatura é a referência e nunca é alterada.</dd>
+    <dt>O mesmo gasto aparece duas vezes no formulário.</dt>
+    <dd>O sistema usa a resposta mais antiga e marca a outra como duplicada; ela não casa com nada.</dd>
+    <dt>O representante diz que já respondeu, mas a linha continua sem formulário.</dt>
+    <dd>Veja se ele respondeu pelo link certo (tabela de links: coluna <em>Respondidos</em>) e se o link não venceu.</dd>
+    <dt>Fiz uma alteração errada.</dt>
+    <dd>Mude de novo: o sistema guarda as duas e o Registro mostra o histórico.</dd>
+    <dt>A página travou ou deu erro.</dt>
+    <dd>Recarregue. Se repetir, anote o horário e o que estava fazendo e avise o administrador.</dd>
+  </dl>
+</section>

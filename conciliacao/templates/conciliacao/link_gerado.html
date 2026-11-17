@@ -1,0 +1,18 @@
+{% extends "conciliacao/base.html" %}
+{% block titulo %}Link de pendências · {{ rep.nome }}{% endblock %}
+{% block conteudo %}
+<p><a href="{% url 'conciliacao:representante' comp.codigo rep.pk %}">← {{ rep.nome }} · {{ comp }}</a></p>
+<section class="cartao">
+  <h1 class="titulo">Link de pendências gerado</h1>
+  <p class="secundario">{{ link.chaves|length }} gasto(s) de {{ rep.nome }} na fatura {{ comp }} · válido até {{ link.expira_em|date:"d/m/Y H:i" }}.</p>
+  {% if sem_endereco %}<p class="aviso" style="padding:10px 12px">O endereço público do portal ainda não está configurado (PORTAL_URL_BASE): o link abaixo só funciona na rede interna.</p>{% endif %}
+  <p><strong>Copie agora:</strong> por segurança, o link aparece só nesta tela. Se perder, gere outro (e revogue este).</p>
+  <label class="secundario pequeno" for="mensagem">Mensagem para o representante</label>
+  <textarea id="mensagem" class="relatorio" rows="5" readonly>{{ mensagem }}</textarea>
+  <div class="acoes">
+    <button class="btn" type="button" onclick="navigator.clipboard.writeText(document.getElementById('mensagem').value).then(() => { this.textContent = 'Copiado' })">Copiar mensagem</button>
+    <a class="btn secundario" href="{{ whatsapp }}" target="_blank" rel="noopener noreferrer">Abrir no WhatsApp</a>
+    <button class="btn secundario" type="button" onclick="navigator.clipboard.writeText('{{ url|escapejs }}').then(() => { this.textContent = 'Link copiado' })">Copiar só o link</button>
+  </div>
+</section>
+{% endblock %}

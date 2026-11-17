@@ -1,0 +1,50 @@
+{% extends "conciliacao/base.html" %}
+{% block titulo %}Registro de alterações{% endblock %}
+{% block conteudo %}
+<section class="cartao">
+  <div class="linha-titulo"><h1 class="titulo">Registro de alterações</h1></div>
+  <p class="secundario">Tudo o que foi feito na Conciliação: importações, mudanças de situação, valores corrigidos, comprovantes,
+    links e respostas dos representantes, cadastros, exportações e fechamentos. Logins e mudanças de usuários ficam na
+    Central (Administração &gt; Registro de atividades).</p>
+  <form method="get" class="filtros-lista">
+    <label>Usuário<select name="usuario"><option value="">Todos</option>{% for u in usuarios %}<option{% if f.usuario == u %} selected{% endif %}>{{ u }}</option>{% endfor %}</select></label>
+    <label>Ação<select name="acao"><option value="">Todas</option>{% for v, n in acoes %}<option value="{{ v }}"{% if f.acao == v %} selected{% endif %}>{{ n }}</option>{% endfor %}</select></label>
+    <label>De<input type="date" name="de" value="{{ f.de|default:'' }}"></label>
+    <label>Até<input type="date" name="ate" value="{{ f.ate|default:'' }}"></label>
+    <button class="btn" type="submit">Filtrar</button>
+    <a class="limpar-lista" href="{% url 'conciliacao:registro' %}">Limpar</a>
+  </form>
+  <p><strong>{{ pagina.paginator.count }}</strong> registros</p>
+</section>
+
+<section class="cartao">
+  <div class="tabela">
+    <table>
+      <thead><tr><th>Quando</th><th>Ação</th><th>Resultado</th><th>Usuário</th><th>De onde</th><th>Competência</th><th>Representante</th><th>Detalhe</th></tr></thead>
+      <tbody>
+      {% for a in pagina %}
+        <tr>
+          <td class="mono">{{ a.momento|date:"d/m/Y H:i" }}</td>
+          <td>{{ a.get_acao_display }}</td>
+          <td><span class="pill {% if a.resultado == 'OK' %}st-ok{% elif a.resultado == 'ERRO' %}st-semform{% else %}st-ressalva{% endif %}">{{ a.get_resultado_display }}</span></td>
+          <td>{{ a.usuario|default:"—" }}</td>
+          <td class="secundario">{{ a.maquina|default:a.ip|default:"—" }}</td>
+          <td>{{ a.competencia.codigo|default:"" }}</td>
+          <td>{{ a.representante.nome|default:"" }}</td>
+          <td class="secundario">{{ a.detalhe_texto }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="8" class="secundario">Nada registrado com esses filtros.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if pagina.paginator.num_pages > 1 %}
+  <nav class="paginacao" aria-label="Páginas">
+    {% if pagina.has_previous %}<a class="btn secundario" href="?{{ query }}{% if query %}&amp;{% endif %}pagina={{ pagina.previous_page_number }}">← Anterior</a>{% endif %}
+    <span class="secundario">Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
+    {% if pagina.has_next %}<a class="btn secundario" href="?{{ query }}{% if query %}&amp;{% endif %}pagina={{ pagina.next_page_number }}">Próxima →</a>{% endif %}
+  </nav>
+  {% endif %}
+</section>
+{% endblock %}
